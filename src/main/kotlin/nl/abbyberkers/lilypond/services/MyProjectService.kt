@@ -1,9 +1,9 @@
-package com.github.slideclimb.intellijlilypond.services
+package nl.abbyberkers.lilypond.services
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
-import com.github.slideclimb.intellijlilypond.MyBundle
+import nl.abbyberkers.lilypond.MyBundle
 
 @Service(Service.Level.PROJECT)
 class MyProjectService(project: Project) {
