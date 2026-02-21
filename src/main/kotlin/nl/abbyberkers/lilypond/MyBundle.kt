@@ -1,4 +1,4 @@
-package com.github.slideclimb.intellijlilypond
+package nl.abbyberkers.lilypond
 
 import com.intellij.DynamicBundle
 import org.jetbrains.annotations.NonNls

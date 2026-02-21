@@ -1,4 +1,4 @@
-package com.github.slideclimb.intellijlilypond.startup
+package nl.abbyberkers.lilypond.startup
 
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project

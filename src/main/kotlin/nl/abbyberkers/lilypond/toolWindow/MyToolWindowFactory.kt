@@ -1,4 +1,4 @@
-package com.github.slideclimb.intellijlilypond.toolWindow
+package nl.abbyberkers.lilypond.toolWindow
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
@@ -8,8 +8,8 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.content.ContentFactory
-import com.github.slideclimb.intellijlilypond.MyBundle
-import com.github.slideclimb.intellijlilypond.services.MyProjectService
+import nl.abbyberkers.lilypond.MyBundle
+import nl.abbyberkers.lilypond.services.MyProjectService
 import javax.swing.JButton
 
 
