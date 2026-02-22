@@ -9,5 +9,9 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
+        <fileType name="LilyPond source file"
+                  implementationClass="nl.abbyberkers.lilypond.language.LilypondFileType"
+                  language="LilyPond"
+                  extensions="ly;ily"/>
     </extensions>
 </idea-plugin>
