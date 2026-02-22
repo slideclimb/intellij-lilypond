@@ -14,16 +14,129 @@
 
   tokens = [
     BACKSLASH='\'
-    VARIABLE="regexp:[a-zA-Z]+"
+    IDENTIFIER="regexp:[a-zA-Z_]+"
+
+    DIGIT="regexp:\d"
+    DOT="."
+    COMMA=","
+    SINGLE_QUOTE="'"
+    TILDE="~"
+    BAR="|"
+    SLASH="/"
+    COLON=":"
+    UNDERSCORE="_"
+    PLUS="+"
+    MINUS="-"
+    STAR="*"
+    HAT="^"
+    QUESTION_MARK="?"
+    EXCLAMATION_MARK="!"
+
     EQUALS="="
+    LEFT_BRACE="{"
+    RIGHT_BRACE="}"
+    LEFT_BRACKET="["
+    RIGHT_BRACKET="]"
+    LEFT_PAREN="("
+    RIGHT_PAREN=")"
+
+    MULTI_VOICE_START="<<"
+    MULTI_VOICE_END=">>"
+    CHORD_START="<"
+    CHORD_END=">"
+
+    SCM_START="#"
+    SCM_CONTINUE="#}"
+    SCM_LILY_START="#{"
+    SCM_START_DOLLAR="$"
+
+    STRING_LITERAL="regexp:\"[^\"]*\""
     WHITESPACE="regexp:\s+"
+    BLOCK_COMMENT="regexp:%\{(.|\n)*%}"
+    LINE_COMMENT="regexp:%[^{].*"
+
+    SCM_IDENTIFIER="regexp:[a-zA-Z-:]+"
+    SCM_BLOCK_COMMENT="regexp:#!\{(.|\n)*!#"
+    SCM_LINE_COMMENT="regexp:;.*"
   ]
 }
 
-lilypondFile ::= (command | assignment | VARIABLE)*
+// Parser is stupid and ridiculously simple on purpose. LilyPond allows almost anything, everywhere, so for now keep it simple and add complexity when it is useful for implementing a feature.
+lilypondFile ::= (expression | braced_expression | BLOCK_COMMENT | LINE_COMMENT | scheme_expression)*
 
-command ::= BACKSLASH VARIABLE {pin=2}
+command ::= BACKSLASH IDENTIFIER
 
-assignment ::= VARIABLE EQUALS value {pin=2}
+braced_expression ::= LEFT_BRACE unit* RIGHT_BRACE {pin=3}
 
-value ::= VARIABLE
+expression ::= unit+
+
+unit ::= command
+  | IDENTIFIER
+  | DIGIT
+  | DOT
+  | COMMA
+  | SINGLE_QUOTE
+  | TILDE
+  | BAR
+  | SLASH
+  | COLON
+  | UNDERSCORE
+  | PLUS
+  | MINUS
+  | STAR
+  | HAT
+  | QUESTION_MARK
+  | EXCLAMATION_MARK
+  | EQUALS
+  | LEFT_BRACE
+  | RIGHT_BRACE
+  | LEFT_BRACKET
+  | RIGHT_BRACKET
+  | LEFT_PAREN
+  | RIGHT_PAREN
+  | MULTI_VOICE_START
+  | MULTI_VOICE_END
+  | CHORD_START
+  | CHORD_END
+  | STRING_LITERAL
+
+
+scheme_expression ::= (SCM_START | SCM_START_DOLLAR) scheme_expression_internal+
+
+scheme_expression_internal ::= scm_function | scm_unit | SCM_BLOCK_COMMENT | SCM_LINE_COMMENT | scm_lily
+
+scm_function ::= LEFT_PAREN scm_unit scm_args* scheme_expression_internal* RIGHT_PAREN
+
+scm_id ::= (SCM_IDENTIFIER | PLUS | MINUS | SLASH | STAR)
+
+scm_args ::= LEFT_PAREN scheme_expression_internal* RIGHT_PAREN
+
+scm_unit ::= (SCM_HASH | SINGLE_QUOTE)? scm_id (QUESTION_MARK | EXCLAMATION_MARK)?
+
+scm_lily ::= SCM_LILY_START (expression | BLOCK_COMMENT | LINE_COMMENT) SCM_CONTINUE
+
+
+// more complicated version that has some problems (how to define `_6` in `\addScript _6 { a b c }`?)
+//expression ::= command | assignment | multi_voice | music_line | time_signature | scheme_expression | IDENTIFIER | STRING_LITERAL
+//
+//assignment ::= IDENTIFIER EQUALS expression {pin=2}
+//
+//multi_voice ::= MULTI_VOICE_START expression* MULTI_VOICE_END {pin=3}
+//
+//music_line ::= (note | SLASH | chord | command | BAR)+
+//
+//time_signature ::= DIGIT+ SLASH DIGIT+ {pin=2}
+//
+//chord ::= CHORD_START (command | note)* CHORD_END modifiers? {pin=3}
+//
+//note ::= (PLUS | MINUS)? IDENTIFIER modifiers? (COLON SLASH? chord_mode_augmentation)?
+//
+//modifiers ::= (octave_modifier | duration_modifier | articulation | TILDE | LEFT_PAREN | RIGHT_PAREN | LEFT_BRACKET | RIGHT_BRACKET | PLUS | MINUS | SLASH | STRING_LITERAL | command)+
+//
+//duration_modifier ::= DIGIT DOT?
+//
+//octave_modifier ::= EQUALS? (SINGLE_QUOTE+ | COMMA+)
+//
+//articulation ::= MINUS (HAT | PLUS | MINUS | EXCLAMATION_MARK | CHORD_END | DOT | UNDERSCORE)
+//
+//chord_mode_augmentation ::= (IDENTIFIER | DIGIT | DOT | PLUS | MINUS | HAT | UNDERSCORE)+
