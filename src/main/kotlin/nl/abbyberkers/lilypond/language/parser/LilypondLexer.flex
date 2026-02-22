@@ -5,6 +5,7 @@ import com.intellij.psi.tree.IElementType;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.List;
 
 import static com.intellij.psi.TokenType.BAD_CHARACTER;
 import static com.intellij.psi.TokenType.WHITE_SPACE;
@@ -18,6 +19,8 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
   }
 
   private Deque<Integer> stack = new ArrayDeque<>();
+
+  private Deque<Integer> schemeBracketsOpenStack = new ArrayDeque<>();
 
   public void yypushState(int newState) {
     stack.push(yystate());
@@ -41,7 +44,6 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
 %type IElementType
 %unicode
 
-EOL=\R
 WHITE_SPACE=\s+
 
 IDENTIFIER=[a-zA-Z_]+
@@ -53,15 +55,17 @@ LINE_COMMENT=%[^{].*
 
 %xstates SCHEME
 
-SCM_IDENTIFIER=[a-zA-Z\-:]+
+SCM_IDENTIFIER=[a-zA-Z\-_:]+
 SCM_BLOCK_COMMENT=#\!\{[^(\!#)]\!#
 SCM_LINE_COMMENT=;.*
 
 
 %%
-<YYINITIAL, SCHEME> {
+
+<YYINITIAL> {
   "|"                    { return BAR; }
   "/"                    { return SLASH; }
+  "\\"                   { return BACKSLASH; }
   ":"                    { return COLON; }
   "_"                    { return UNDERSCORE; }
   "+"                    { return PLUS; }
@@ -79,39 +83,59 @@ SCM_LINE_COMMENT=;.*
   "]"                    { return RIGHT_BRACKET; }
   "?"                    { return QUESTION_MARK; }
   "!"                    { return EXCLAMATION_MARK; }
-}
-
-<YYINITIAL> {
-  {WHITE_SPACE}          { return WHITE_SPACE; }
-
-  "\\"                   { return BACKSLASH; }
   "("                    { return LEFT_PAREN; }
   ")"                    { return RIGHT_PAREN; }
   "<<"                   { return MULTI_VOICE_START; }
   ">>"                   { return MULTI_VOICE_END; }
-  "<"                    { return CHORD_START; }
-  ">"                    { return CHORD_END; }
-  "#}"                   { yypushState(SCHEME); return SCM_CONTINUE; }
-  "#"                    { yypushState(SCHEME); return SCM_START; }
-  "$"                    { yypushState(SCHEME); return SCM_START_DOLLAR; }
+  // Tokenizer is greedy, so these should come after their double variant.
+  "<"                    { return SMALLER; }
+  ">"                    { return GREATER; }
+  "#}"                   { yypushState(SCHEME); schemeBracketsOpenStack.pop(); return SCM_CONTINUE; }
+  "#"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START; }
+  "$"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START_DOLLAR; }
 
-  {IDENTIFIER}           { return IDENTIFIER; }
   {DIGIT}                { return DIGIT; }
   {STRING_LITERAL}       { return STRING_LITERAL; }
-  {WHITESPACE}           { return WHITESPACE; }
+  {IDENTIFIER}           { return IDENTIFIER; }
+  {WHITESPACE}           { return WHITE_SPACE; }
   {BLOCK_COMMENT}        { return BLOCK_COMMENT; }
   {LINE_COMMENT}         { return LINE_COMMENT; }
 }
 
 <SCHEME> {
   {WHITE_SPACE}          {
-          if (schemeBracketsOpen == 0) yypopState();
+          if (schemeBracketsOpen == schemeBracketsOpenStack.peek()) {
+              yypopState();
+              schemeBracketsOpenStack.pop();
+          }
           return WHITE_SPACE;
   }
-  "("                    { schemeBracketsOpen++; return LEFT_PAREN; }
-  ")"                    { schemeBracketsOpen--; if (schemeBracketsOpen == lastSchemeBracketsOpen) yypopState(); return RIGHT_PAREN; }
-  "#{"                   { yypopState(); lastSchemeBracketsOpen = schemeBracketsOpen; return SCM_LILY_START; }
+  "/"                    { return SCM_SLASH; }
+  "\\"                   { return SCM_BACKSLASH; }
+  "+"                    { return SCM_PLUS; }
+  "-"                    { return SCM_MINUS; }
+  "*"                    { return SCM_STAR; }
+  "."                    { return SCM_DOT; }
+  ","                    { return SCM_COMMA; }
+  "'"                    { return SCM_SINGLE_QUOTE; }
+  "?"                    { return SCM_QUESTION_MARK; }
+  "!"                    { return SCM_EXCLAMATION_MARK; }
+  "("                    { schemeBracketsOpen++; return SCM_LEFT_PAREN; }
+  ")"                    {
+          schemeBracketsOpen--;
+          if (schemeBracketsOpen == schemeBracketsOpenStack.peek()) {
+              yypopState();
+              schemeBracketsOpenStack.pop();
+          }
+          return SCM_RIGHT_PAREN;
+      }
+  "#{"                   { yypopState(); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_LILY_START; }
   "#"                    { return SCM_HASH; }
+  "<"                    { return SCM_SMALLER; }
+  ">"                    { return SCM_GREATER; }
+  "`"                    { return SCM_BACKTICK; }
+  {DIGIT}                { return SCM_DIGIT; }
+  {STRING_LITERAL}       { return SCM_STRING_LITERAL; }
   {SCM_IDENTIFIER}       { return SCM_IDENTIFIER; }
   {SCM_BLOCK_COMMENT}        { return SCM_BLOCK_COMMENT; }
   {SCM_LINE_COMMENT}         { return SCM_LINE_COMMENT; }

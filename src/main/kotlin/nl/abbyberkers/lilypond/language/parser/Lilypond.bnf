@@ -31,6 +31,7 @@
     HAT="^"
     QUESTION_MARK="?"
     EXCLAMATION_MARK="!"
+    BACKTICK="`"
 
     EQUALS="="
     LEFT_BRACE="{"
@@ -42,8 +43,8 @@
 
     MULTI_VOICE_START="<<"
     MULTI_VOICE_END=">>"
-    CHORD_START="<"
-    CHORD_END=">"
+    SMALLER="<"
+    GREATER=">"
 
     SCM_START="#"
     SCM_CONTINUE="#}"
@@ -61,8 +62,11 @@
   ]
 }
 
-// Parser is stupid and ridiculously simple on purpose. LilyPond allows almost anything, everywhere, so for now keep it simple and add complexity when it is useful for implementing a feature.
-lilypondFile ::= (expression | braced_expression | BLOCK_COMMENT | LINE_COMMENT | scheme_expression)*
+// Parser is stupid and ridiculously simple on purpose. LilyPond allows almost anything, everywhere, so for now keep it simple
+// and add complexity when it is useful for implementing a feature.
+lilypondFile ::= base_expression*
+
+base_expression ::= expression | braced_expression | BLOCK_COMMENT | LINE_COMMENT | scheme_expression
 
 command ::= BACKSLASH IDENTIFIER
 
@@ -79,6 +83,7 @@ unit ::= command
   | TILDE
   | BAR
   | SLASH
+  | BACKSLASH
   | COLON
   | UNDERSCORE
   | PLUS
@@ -96,24 +101,35 @@ unit ::= command
   | RIGHT_PAREN
   | MULTI_VOICE_START
   | MULTI_VOICE_END
-  | CHORD_START
-  | CHORD_END
+  | SMALLER
+  | GREATER
   | STRING_LITERAL
 
-
+// TODO implement https://www.scheme.com/tspl2d/grammar.html
+// Scheme parser has to be implemented here. Language injection is not possible because of nesting (LilyPond in Scheme and vice versa)
+// and references from/to both languages.
 scheme_expression ::= (SCM_START | SCM_START_DOLLAR) scheme_expression_internal+
 
 scheme_expression_internal ::= scm_function | scm_unit | SCM_BLOCK_COMMENT | SCM_LINE_COMMENT | scm_lily
 
-scm_function ::= LEFT_PAREN scm_unit scm_args* scheme_expression_internal* RIGHT_PAREN
+scm_function ::= SCM_BACKTICK? SCM_LEFT_PAREN scheme_expression_internal* SCM_RIGHT_PAREN
 
-scm_id ::= (SCM_IDENTIFIER | PLUS | MINUS | SLASH | STAR)
+scm_id ::= (SCM_IDENTIFIER | SCM_PLUS | SCM_MINUS | SCM_SLASH | SCM_STAR)
 
-scm_args ::= LEFT_PAREN scheme_expression_internal* RIGHT_PAREN
+scm_unit ::= SCM_COMMA
+  | SCM_SINGLE_QUOTE
+  | SCM_DOT
+  | SCM_STRING_LITERAL
+  | SCM_SMALLER
+  | SCM_GREATER
+  | scm_char_start
+  | ((SCM_HASH | SCM_SINGLE_QUOTE)? (scm_number | scm_id) (SCM_QUESTION_MARK | SCM_EXCLAMATION_MARK)?)
 
-scm_unit ::= (SCM_HASH | SINGLE_QUOTE)? scm_id (QUESTION_MARK | EXCLAMATION_MARK)?
+scm_char_start ::= SCM_HASH SCM_BACKSLASH
 
-scm_lily ::= SCM_LILY_START (expression | BLOCK_COMMENT | LINE_COMMENT) SCM_CONTINUE
+scm_number ::= SCM_MINUS? SCM_DIGIT+
+
+scm_lily ::= SCM_LILY_START (base_expression | BLOCK_COMMENT | LINE_COMMENT)* SCM_CONTINUE
 
 
 // more complicated version that has some problems (how to define `_6` in `\addScript _6 { a b c }`?)
