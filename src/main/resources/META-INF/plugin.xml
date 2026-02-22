@@ -9,7 +9,5 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="nl.abbyberkers.lilypond.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-        <postStartupActivity implementation="nl.abbyberkers.lilypond.startup.MyProjectActivity" />
     </extensions>
 </idea-plugin>
