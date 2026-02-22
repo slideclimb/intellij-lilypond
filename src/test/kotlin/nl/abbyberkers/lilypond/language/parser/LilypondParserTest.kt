@@ -12,10 +12,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 
+/**
+ * Check that all snippets (from https://github.com/lilypond/lilypond/tree/master/Documentation/snippets) can be parsed without parse errors.
+ */
 @RunWith(Parameterized::class)
 class LilypondParserTest : LightPlatformCodeInsightTestCase(), FileBasedTestCaseHelperEx {
     override fun getTestDataPath(): String {
-        return "src/test/resources/language/parser"
+        return "src/test/resources/language/parser/snippets"
     }
 
     override fun getFileSuffix(filename: String): String? {
