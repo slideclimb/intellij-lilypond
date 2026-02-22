@@ -11,7 +11,9 @@
     <extensions defaultExtensionNs="com.intellij">
         <fileType name="LilyPond source file"
                   implementationClass="nl.abbyberkers.lilypond.language.LilypondFileType"
+                  fieldName="INSTANCE"
                   language="LilyPond"
                   extensions="ly;ily"/>
+        <lang.parserDefinition language="LilyPond" implementationClass="nl.abbyberkers.lilypond.language.parser.LilypondParserDefinition"/>
     </extensions>
 </idea-plugin>

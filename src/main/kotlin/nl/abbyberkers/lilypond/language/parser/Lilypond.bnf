@@ -1,0 +1,29 @@
+{
+  parserClass="nl.abbyberkers.lilypond.language.parser.LilypondParser"
+
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Lilypond"
+  psiImplClassSuffix="Impl"
+  psiPackage="nl.abbyberkers.lilypond.language.psi"
+  psiImplPackage="nl.abbyberkers.lilypond.language.psi.impl"
+
+  elementTypeHolderClass="nl.abbyberkers.lilypond.language.psi.LilypondTypes"
+  elementTypeClass="nl.abbyberkers.lilypond.language.psi.LilypondElementType"
+  tokenTypeClass="nl.abbyberkers.lilypond.language.psi.LilypondTokenType"
+
+  tokens = [
+    BACKSLASH='\'
+    VARIABLE="regexp:[a-zA-Z]+"
+    EQUALS="="
+    WHITESPACE="regexp:\s+"
+  ]
+}
+
+lilypondFile ::= (command | assignment | VARIABLE)*
+
+command ::= BACKSLASH VARIABLE {pin=2}
+
+assignment ::= VARIABLE EQUALS value {pin=2}
+
+value ::= VARIABLE
