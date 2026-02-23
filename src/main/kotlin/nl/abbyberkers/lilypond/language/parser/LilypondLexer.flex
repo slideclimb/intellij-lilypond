@@ -46,9 +46,9 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
 
 WHITE_SPACE=\s+
 
-WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+
+WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
 DIGIT=[0-9]
-STRING_LITERAL=\"[^\"]*\"
+STRING_LITERAL=\"([^\"\\]|\\.)*\"
 WHITESPACE=[ \t\n\x0B\f\r]+
 BLOCK_COMMENT=%\{(.|\n)*?%}
 LINE_COMMENT=%[^\r\n]*
@@ -131,11 +131,18 @@ SCM_LINE_COMMENT=;.*
           }
           return SCM_RIGHT_PAREN;
       }
+
+  "#t"                   { return SCM_TRUE; }
+  "#f"                   { return SCM_FALSE; }
+  "#("                   { schemeBracketsOpen++; return SCM_VECTOR_OPEN; }
+
   "#{"                   { yypopState(); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_LILY_START; }
   "#"                    { return SCM_HASH; }
+  "@"                    { return SCM_AT; }
   "<"                    { return SCM_SMALLER; }
   ">"                    { return SCM_GREATER; }
   "`"                    { return SCM_BACKTICK; }
+  "}"                    { yypopState(); return LEFT_BRACE; }
   {DIGIT}                { return SCM_DIGIT; }
   {STRING_LITERAL}       { return SCM_STRING_LITERAL; }
   {SCM_IDENTIFIER}       { return SCM_IDENTIFIER; }

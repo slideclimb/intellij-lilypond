@@ -112,7 +112,7 @@ scheme_expression ::= (SCM_START | SCM_START_DOLLAR) scheme_expression_internal+
 
 scheme_expression_internal ::= scm_function | scm_unit | SCM_BLOCK_COMMENT | SCM_LINE_COMMENT | scm_lily
 
-scm_function ::= SCM_BACKTICK? SCM_LEFT_PAREN scheme_expression_internal* SCM_RIGHT_PAREN
+scm_function ::= SCM_BACKTICK? (SCM_VECTOR_OPEN | SCM_LEFT_PAREN) scheme_expression_internal* SCM_RIGHT_PAREN
 
 scm_id ::= (SCM_IDENTIFIER | SCM_PLUS | SCM_MINUS | SCM_SLASH | SCM_STAR)
 
@@ -125,6 +125,9 @@ scm_unit ::= SCM_COMMA
   | SCM_QUESTION_MARK
   | SCM_EXCLAMATION_MARK
   | SCM_EQUALS
+  | SCM_AT
+  | SCM_TRUE
+  | SCM_FALSE
   | scm_char_start
   | ((SCM_HASH | SCM_SINGLE_QUOTE)? (scm_number | scm_id) (SCM_QUESTION_MARK | SCM_EXCLAMATION_MARK)?)
 
