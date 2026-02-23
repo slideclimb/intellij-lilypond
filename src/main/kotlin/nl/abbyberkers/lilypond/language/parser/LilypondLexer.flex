@@ -46,16 +46,16 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
 
 WHITE_SPACE=\s+
 
-IDENTIFIER=[a-zA-Z_]+
+WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+
 DIGIT=[0-9]
 STRING_LITERAL=\"[^\"]*\"
 WHITESPACE=[ \t\n\x0B\f\r]+
-BLOCK_COMMENT=%\{[^(%})]*%}
-LINE_COMMENT=%[^{].*
+BLOCK_COMMENT=%\{(.|\n)*?%}
+LINE_COMMENT=%[^\r\n]*
 
 %xstates SCHEME
 
-SCM_IDENTIFIER=[a-zA-Z\-_:]+
+SCM_IDENTIFIER=[a-zA-Z\-_:$]+
 SCM_BLOCK_COMMENT=#\!\{[^(\!#)]\!#
 SCM_LINE_COMMENT=;.*
 
@@ -96,10 +96,11 @@ SCM_LINE_COMMENT=;.*
 
   {DIGIT}                { return DIGIT; }
   {STRING_LITERAL}       { return STRING_LITERAL; }
-  {IDENTIFIER}           { return IDENTIFIER; }
   {WHITESPACE}           { return WHITE_SPACE; }
   {BLOCK_COMMENT}        { return BLOCK_COMMENT; }
   {LINE_COMMENT}         { return LINE_COMMENT; }
+  {WORD}                 { return WORD; }
+
 }
 
 <SCHEME> {
@@ -112,6 +113,7 @@ SCM_LINE_COMMENT=;.*
   }
   "/"                    { return SCM_SLASH; }
   "\\"                   { return SCM_BACKSLASH; }
+  "="                    { return SCM_EQUALS; }
   "+"                    { return SCM_PLUS; }
   "-"                    { return SCM_MINUS; }
   "*"                    { return SCM_STAR; }

@@ -14,8 +14,6 @@
 
   tokens = [
     BACKSLASH='\'
-    IDENTIFIER="regexp:[a-zA-Z_]+"
-
     DIGIT="regexp:\d"
     DOT="."
     COMMA=","
@@ -59,23 +57,24 @@
     SCM_IDENTIFIER="regexp:[a-zA-Z-:]+"
     SCM_BLOCK_COMMENT="regexp:#!\{(.|\n)*!#"
     SCM_LINE_COMMENT="regexp:;.*"
+
+    WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+"
   ]
 }
 
 // Parser is stupid and ridiculously simple on purpose. LilyPond allows almost anything, everywhere, so for now keep it simple
 // and add complexity when it is useful for implementing a feature.
-lilypondFile ::= base_expression*
+lilypondFile ::= (base_expression | BLOCK_COMMENT | LINE_COMMENT)*
 
-base_expression ::= expression | braced_expression | BLOCK_COMMENT | LINE_COMMENT | scheme_expression
+base_expression ::= expression | braced_expression | scheme_expression
 
-command ::= BACKSLASH IDENTIFIER
+command ::= BACKSLASH WORD
 
 braced_expression ::= LEFT_BRACE unit* RIGHT_BRACE {pin=3}
 
 expression ::= unit+
 
 unit ::= command
-  | IDENTIFIER
   | DIGIT
   | DOT
   | COMMA
@@ -104,6 +103,7 @@ unit ::= command
   | SMALLER
   | GREATER
   | STRING_LITERAL
+  | WORD
 
 // TODO implement https://www.scheme.com/tspl2d/grammar.html
 // Scheme parser has to be implemented here. Language injection is not possible because of nesting (LilyPond in Scheme and vice versa)
@@ -122,6 +122,9 @@ scm_unit ::= SCM_COMMA
   | SCM_STRING_LITERAL
   | SCM_SMALLER
   | SCM_GREATER
+  | SCM_QUESTION_MARK
+  | SCM_EXCLAMATION_MARK
+  | SCM_EQUALS
   | scm_char_start
   | ((SCM_HASH | SCM_SINGLE_QUOTE)? (scm_number | scm_id) (SCM_QUESTION_MARK | SCM_EXCLAMATION_MARK)?)
 
