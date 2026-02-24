@@ -62,103 +62,725 @@
   ]
 }
 
-// Parser is stupid and ridiculously simple on purpose. LilyPond allows almost anything, everywhere, so for now keep it simple
-// and add complexity when it is useful for implementing a feature.
-lilypondFile ::= (base_expression | BLOCK_COMMENT | LINE_COMMENT)*
+lilypondFile ::= "#{" embedded_lilypond
+               | lilypond
 
-base_expression ::= expression | braced_expression | scheme_expression
+lilypond ::= (toplevel_expression | assignment | error | "\\version_error")*
 
-command ::= BACKSLASH WORD
+toplevel_expression ::= header_block
+                   | book_block
+                   | bookpart_block
+                   | BOOK_IDENTIFIER
+                   | score_block
+                   | composite_music
+                   | full_markup
+                   | full_markup_list
+                   | SCM_TOKEN
+                   | embedded_scm_active
+                   | output_def
 
-braced_expression ::= LEFT_BRACE unit* RIGHT_BRACE {pin=3}
+lookup ::= LOOKUP_IDENTIFIER
+         | LOOKUP_IDENTIFIER '.' symbol_list_rev
 
-expression ::= unit+
+embedded_scm_bare ::= SCM_TOKEN
+                    | SCM_IDENTIFIER
 
-unit ::= command
-  | DIGIT
-  | DOT
-  | COMMA
-  | SINGLE_QUOTE
-  | TILDE
-  | BAR
-  | SLASH
-  | BACKSLASH
-  | COLON
-  | UNDERSCORE
-  | PLUS
-  | MINUS
-  | STAR
-  | HAT
-  | QUESTION_MARK
-  | EXCLAMATION_MARK
-  | EQUALS
-  | LEFT_BRACE
-  | RIGHT_BRACE
-  | LEFT_BRACKET
-  | RIGHT_BRACKET
-  | LEFT_PAREN
-  | RIGHT_PAREN
-  | MULTI_VOICE_START
-  | MULTI_VOICE_END
-  | SMALLER
-  | GREATER
-  | STRING_LITERAL
-  | WORD
+embedded_scm_active ::= SCM_IDENTIFIER
+                   | scm_function_call
+                   | lookup
+embedded_scm_bare_arg ::= SCM_ARG
+                     | SCM_TOKEN
+                     | FRACTION
+                     | partial_markup
+                     | full_markup_list
+                     | context_modification
+                     | header_block
+                     | score_block
+                     | context_def_spec_block
+                     | book_block
+                     | bookpart_block
+                     | output_def
+                     | lookup
+embedded_scm ::= embedded_scm_bare
+            | scm_function_call
+            | lookup
 
-// TODO implement https://www.scheme.com/tspl2d/grammar.html
-// Scheme parser has to be implemented here. Language injection is not possible because of nesting (LilyPond in Scheme and vice versa)
-// and references from/to both languages.
-scheme_expression ::= (SCM_START | SCM_START_DOLLAR) scheme_expression_internal+
+embedded_scm_arg ::= embedded_scm_bare_arg
+                | scm_function_call
+                | music_assign
 
-scheme_expression_internal ::= scm_function | scm_unit | SCM_BLOCK_COMMENT | SCM_LINE_COMMENT | scm_lily
+scm_function_call ::= SCM_FUNCTION function_arglist
 
-scm_function ::= SCM_BACKTICK? (SCM_VECTOR_OPEN | SCM_LEFT_PAREN) scheme_expression_internal* SCM_RIGHT_PAREN
+embedded_lilypond_number ::= '-' embedded_lilypond_number
+                        | bare_number_common
+                        | UNSIGNED NUMBER_IDENTIFIER
 
-scm_id ::= (SCM_IDENTIFIER | SCM_PLUS | SCM_MINUS | SCM_SLASH | SCM_STAR)
+embedded_lilypond ::= (
+                   identifier_init_nonumber
+                 | embedded_lilypond_number
+                 | post_event
+                 | duration post_events
+                 | music_embedded music_embedded music_list
+                 | error
+                 | "\\version-error" embedded_lilypond
+                 )?
 
-scm_unit ::= SCM_COMMA
-  | SCM_SINGLE_QUOTE
-  | SCM_DOT
-  | SCM_STRING_LITERAL
-  | SCM_SMALLER
-  | SCM_GREATER
-  | SCM_QUESTION_MARK
-  | SCM_EXCLAMATION_MARK
-  | SCM_EQUALS
-  | SCM_AT
-  | SCM_TRUE
-  | SCM_FALSE
-  | scm_char_start
-  | ((SCM_HASH | SCM_SINGLE_QUOTE)? (scm_number | scm_id) (SCM_QUESTION_MARK | SCM_EXCLAMATION_MARK)?)
+lilypond_header_body ::= (assignment | SCM_TOKEN | embedded_scm_active)*
 
-scm_char_start ::= SCM_HASH SCM_BACKSLASH
+lilypond_header ::= "\\header" '{' lilypond_header_body '}'
+header_block ::= lilypond_header
+assignment_id ::= STRING
+             | SYMBOL
+assignment ::= assignment_id '=' identifier_init
+          | assignment_id '.' property_path '=' identifier_init
+          | markup_mode_word '=' identifier_init
+identifier_init ::= identifier_init_nonumber
+               | number_expression
+               | symbol_list_part_bare '.' property_path
+               | symbol_list_part_bare ',' property_path
+               | post_event_nofinger post_events
+identifier_init_nonumber ::= header_block
+                        | score_block
+                        | book_block
+                        | bookpart_block
+                        | output_def
+                        | context_def_spec_block
+                        | music_assign
+                        | pitch_or_music
+                        | FRACTION
+                        | string
+                        | embedded_scm
+                        | partial_markup
+                        | full_markup_list
+                        | context_modification
+                        | partial_function "\\etc"
+partial_function_scriptable ::= MUSIC_FUNCTION function_arglist_partial
+                           | EVENT_FUNCTION function_arglist_partial
+                           | SCM_FUNCTION function_arglist_partial
+                           | MUSIC_FUNCTION "scheme?" function_arglist_optional partial_function
+                           | EVENT_FUNCTION "scheme?" function_arglist_optional partial_function
+                           | SCM_FUNCTION "scheme?" function_arglist_optional partial_function
+                           | MUSIC_FUNCTION "optional?" "scheme?" function_arglist_nonbackup partial_function
+                           | EVENT_FUNCTION "optional?" "scheme?" function_arglist_nonbackup partial_function
+                           | SCM_FUNCTION "optional?" "scheme?" function_arglist_nonbackup partial_function
+partial_function ::= partial_function_scriptable
+                | "\\override" grob_prop_path '='
+                | "\\set" context_prop_spec '='
+                | "\\override" grob_prop_path '=' partial_function
+                | "\\set" context_prop_spec '=' partial_function
+                | "\\repeat" simple_string unsigned_integer
+                | "\\repeat" simple_string unsigned_integer partial_function
+                | "\\repeat" simple_string
+                | "\\repeat" simple_string partial_function
+                | script_dir markup_mode markup_partial_function
+                | script_dir partial_function_scriptable
+                | script_dir
+context_def_spec_block ::= "\\context" '{' context_def_spec_body '}'
 
-scm_number ::= SCM_MINUS? SCM_DIGIT+
+context_mod_arg ::= embedded_scm | composite_music
 
-scm_lily ::= SCM_LILY_START (base_expression | BLOCK_COMMENT | LINE_COMMENT)* SCM_CONTINUE
+context_def_spec_body ::= (context_mod | context_modification| context_mod_arg)*
 
+book_block ::= "\\book" '{' book_body '}'
 
-// more complicated version that has some problems (how to define `_6` in `\addScript _6 { a b c }`?)
-//expression ::= command | assignment | multi_voice | music_line | time_signature | scheme_expression | IDENTIFIER | STRING_LITERAL
-//
-//assignment ::= IDENTIFIER EQUALS expression {pin=2}
-//
-//multi_voice ::= MULTI_VOICE_START expression* MULTI_VOICE_END {pin=3}
-//
-//music_line ::= (note | SLASH | chord | command | BAR)+
-//
-//time_signature ::= DIGIT+ SLASH DIGIT+ {pin=2}
-//
-//chord ::= CHORD_START (command | note)* CHORD_END modifiers? {pin=3}
-//
-//note ::= (PLUS | MINUS)? IDENTIFIER modifiers? (COLON SLASH? chord_mode_augmentation)?
-//
-//modifiers ::= (octave_modifier | duration_modifier | articulation | TILDE | LEFT_PAREN | RIGHT_PAREN | LEFT_BRACKET | RIGHT_BRACKET | PLUS | MINUS | SLASH | STRING_LITERAL | command)+
-//
-//duration_modifier ::= DIGIT DOT?
-//
-//octave_modifier ::= EQUALS? (SINGLE_QUOTE+ | COMMA+)
-//
-//articulation ::= MINUS (HAT | PLUS | MINUS | EXCLAMATION_MARK | CHORD_END | DOT | UNDERSCORE)
-//
-//chord_mode_augmentation ::= (IDENTIFIER | DIGIT | DOT | PLUS | MINUS | HAT | UNDERSCORE)+
+book_body ::= BOOK_IDENTIFIER? (
+              paper_block
+            | bookpart_block
+            | score_block
+            | composite_music
+            | full_markup
+            | full_markup_list
+            | SCM_TOKEN
+            | embedded_scm_active
+            | lilypond_header
+            | error
+            )*
+
+bookpart_block ::= "\\bookpart" '{' bookpart_body '}'
+
+bookpart_body ::= BOOK_IDENTIFIER ? (
+               paper_block
+             | score_block
+             | composite_music
+             | full_markup
+             | full_markup_list
+             | SCM_TOKEN
+             | embedded_scm_active
+             | lilypond_header
+             | error
+             )*
+
+score_block ::= "\\score" '{' score_body '}'
+
+score_body ::= score_items error*
+
+score_item ::= embedded_scm
+          | music
+          | output_def
+
+score_items ::= score_item* lilypond_header
+
+paper_block ::= output_def
+
+output_def ::= output_def_body '}'
+
+output_def_head ::= "\\paper"
+               | "\\midi"
+               | "\\layout"
+
+output_def_head_with_mode_switch ::= output_def_head
+
+music_or_context_def ::= music_assign
+                    | context_def_spec_block
+
+output_def_body ::= output_def_head_with_mode_switch '{'
+               ( assignment
+               | embedded_scm_active
+               | SCM_TOKEN
+               | music_or_context_def
+               | error
+               )+
+
+tempo_event ::= "\\tempo" steno_duration '=' tempo_range
+           | "\\tempo" text steno_duration '=' tempo_range
+           | "\\tempo" text
+
+music_list ::= (music_embedded | error)*
+
+braced_music_list ::= '{' music_list '}'
+music ::= music_assign
+     | lyric_element_music
+     | pitch_as_music
+pitch_as_music ::= pitch_or_music
+music_embedded ::= music
+              | post_event
+              | music_embedded_backup
+              | music_embedded_backup "(backed-up?)" lyric_element_music
+              | duration post_events
+music_embedded_backup ::= embedded_scm
+music_assign ::= simple_music
+            | composite_music
+repeated_music ::= "\\repeat" simple_string unsigned_integer music
+              | "\\repeat" simple_string unsigned_integer music alternative_music
+alternative_music ::= "\\alternative" basic_music
+sequential_music ::= "\\sequential" braced_music_list
+                | braced_music_list
+simultaneous_music ::= "\\simultaneous" braced_music_list
+                  | "<<" music_list ">>"
+simple_music ::= event_chord
+            | music_property_def
+            | context_change
+context_modification ::= "\\with" '{' context_mod_list '}'
+                    | "\\with" context_modification_arg
+
+context_modification_arg ::= embedded_scm
+                        | MUSIC_IDENTIFIER
+
+optional_context_mods ::= context_modification_mods_list
+
+context_modification_mods_list ::= context_modification*
+
+context_mod_list ::= (context_mod | context_mod_arg)*
+
+context_prefix ::= "\\context" symbol optional_id optional_context_mods
+              | "\\new" symbol optional_id optional_context_mods
+
+new_lyrics ::= ("\\addlyrics" optional_context_mods lyric_mode_music)+
+
+basic_music ::= music_function_call
+           | repeated_music
+           | alternative_music
+           | music_bare
+           | "\\lyricsto" simple_string lyric_mode_music
+           | "\\lyricsto" symbol '=' simple_string lyric_mode_music
+
+contextable_music ::= basic_music
+                 | pitch_as_music
+                 | event_chord
+
+contexted_basic_music ::= context_prefix contextable_music new_lyrics
+                     | context_prefix contextable_music
+                     | context_prefix contexted_basic_music
+
+composite_music ::= basic_music
+               | contexted_basic_music
+               | basic_music new_lyrics
+
+music_bare ::= mode_changed_music
+          | MUSIC_IDENTIFIER
+          | grouped_music_list
+
+grouped_music_list ::= simultaneous_music
+                  | sequential_music
+
+symbol_list_arg ::= SYMBOL_LIST
+               | SYMBOL_LIST '.' symbol_list_rev
+               | SYMBOL_LIST ',' symbol_list_rev
+
+symbol_list_rev ::= symbol_list_part (('.' | ',') symbol_list_part)*
+
+symbol_list_part ::= symbol_list_part_bare
+                | embedded_scm_bare
+
+symbol_list_element ::= STRING
+                   | UNSIGNED
+
+symbol_list_part_bare ::= SYMBOL
+                     | symbol_list_element
+
+function_arglist_nonbackup ::= function_arglist_common
+                          | "optional?" "scheme?" function_arglist_nonbackup post_event_nofinger
+                          | "optional?" "scheme?" function_arglist_nonbackup '-' UNSIGNED
+                          | "optional?" "scheme?" function_arglist_nonbackup '-' REAL
+                          | "optional?" "scheme?" function_arglist_nonbackup '-' NUMBER_IDENTIFIER
+                          | "optional?" "scheme?" function_arglist_nonbackup embedded_scm_arg
+                          | "optional?" "scheme?" function_arglist_nonbackup bare_number_common
+                          | function_arglist_nonbackup_reparse "(reparsed?)" pitch_or_music
+                          | function_arglist_nonbackup_reparse "(reparsed?)" duration
+                          | function_arglist_nonbackup_reparse "(reparsed?)" reparsed_rhythm
+                          | function_arglist_nonbackup_reparse "(reparsed?)" bare_number_common
+                          | function_arglist_nonbackup_reparse "(reparsed?)" SCM_ARG
+                          | function_arglist_nonbackup_reparse "(reparsed?)" lyric_element_music
+                          | function_arglist_nonbackup_reparse "(reparsed?)" symbol_list_arg
+
+reparsed_rhythm ::= DURATION_ARG dots multipliers post_events
+
+function_arglist_nonbackup_reparse ::= "optional?" "scheme?" function_arglist_nonbackup SCM_IDENTIFIER
+                                  | "optional?" "scheme?" function_arglist_nonbackup pitch
+                                  | "optional?" "scheme?" function_arglist_nonbackup steno_tonic_pitch
+                                  | "optional?" "scheme?" function_arglist_nonbackup STRING
+                                  | "optional?" "scheme?" function_arglist_nonbackup SYMBOL
+                                  | "optional?" "scheme?" function_arglist_nonbackup full_markup
+                                  | "optional?" "scheme?" function_arglist_nonbackup UNSIGNED
+                                  | "optional?" "scheme?" function_arglist_nonbackup DURATION_IDENTIFIER
+
+function_arglist_backup ::= function_arglist_common
+                       | "optional?" "scheme?" function_arglist_backup embedded_scm_arg
+                       | "optional?" "scheme?" function_arglist_backup post_event_nofinger
+                       | "optional?" "scheme?" function_arglist_backup pitch
+                       | "optional?" "scheme?" function_arglist_backup steno_tonic_pitch
+                       | "optional?" "scheme?" function_arglist_backup full_markup
+                       | "optional?" "scheme?" function_arglist_backup UNSIGNED
+                       | "optional?" "scheme?" function_arglist_backup REAL
+                       | "optional?" "scheme?" function_arglist_backup NUMBER_IDENTIFIER
+                       | "optional?" "scheme?" function_arglist_backup '-' UNSIGNED
+                       | "optional?" "scheme?" function_arglist_backup '-' REAL
+                       | "optional?" "scheme?" function_arglist_backup '-' NUMBER_IDENTIFIER
+                       | "optional?" "scheme?" function_arglist_backup DURATION_IDENTIFIER
+                       | "optional?" "scheme?" function_arglist_backup SCM_IDENTIFIER
+                       | "optional?" "scheme?" function_arglist_backup STRING
+                       | "optional?" "scheme?" function_arglist_backup SYMBOL
+                       | function_arglist_backup "(reparsed?)" pitch_or_music
+                       | function_arglist_backup "(reparsed?)" bare_number_common
+                       | function_arglist_backup "(reparsed?)" duration
+                       | function_arglist_backup "(reparsed?)" reparsed_rhythm
+                       | function_arglist_backup "(reparsed?)" symbol_list_arg
+
+function_arglist ::= function_arglist_nonbackup
+                | "optional?" "scheme?" function_arglist_skip_nonbackup "\\default"
+
+function_arglist_skip_nonbackup ::= function_arglist_nonbackup
+                               | "optional?" "scheme?" function_arglist_skip_nonbackup
+
+function_arglist_partial ::= "scheme?" function_arglist_optional
+                        | "scheme?" function_arglist_partial_optional
+                        | "optional?" "scheme?" function_arglist_nonbackup
+                        | "optional?" "scheme?" function_arglist_partial
+
+function_arglist_partial_optional ::= "scheme?" function_arglist_optional
+                                 | "scheme?" function_arglist_partial_optional
+                                 | "optional?" "scheme?" function_arglist_backup
+                                 | "optional?" "scheme?" function_arglist_partial_optional
+
+function_arglist_common ::= EXPECT_NO_MORE_ARGS
+                       | "scheme?" function_arglist_optional embedded_scm_arg
+                       | "scheme?" function_arglist_optional bare_number_common
+                       | "scheme?" function_arglist_optional post_event_nofinger
+                       | "scheme?" function_arglist_optional '-' NUMBER_IDENTIFIER
+                       | function_arglist_common_reparse "(reparsed?)" SCM_ARG
+                       | function_arglist_common_reparse "(reparsed?)" lyric_element_music
+                       | function_arglist_common_reparse "(reparsed?)" pitch_or_music
+                       | function_arglist_common_reparse "(reparsed?)" bare_number_common
+                       | function_arglist_common_reparse "(reparsed?)" duration
+                       | function_arglist_common_reparse "(reparsed?)" reparsed_rhythm
+                       | function_arglist_common_reparse "(reparsed?)" symbol_list_arg
+
+function_arglist_common_reparse ::= "scheme?" function_arglist_optional SCM_IDENTIFIER
+                               | "scheme?" function_arglist_optional pitch
+                               | "scheme?" function_arglist_optional steno_tonic_pitch
+                               | "scheme?" function_arglist_optional STRING
+                               | "scheme?" function_arglist_optional SYMBOL
+                               | "scheme?" function_arglist_optional full_markup
+                               | "scheme?" function_arglist_optional UNSIGNED
+                               | "scheme?" function_arglist_optional DURATION_IDENTIFIER
+                               | "scheme?" function_arglist_optional '-' UNSIGNED
+                               | "scheme?" function_arglist_optional '-' REAL
+
+function_arglist_optional ::= function_arglist_backup
+                         | "optional?" "scheme?" function_arglist_skip_backup "\\default"
+                         | function_arglist_skip_backup "(backed-up?)"
+
+function_arglist_skip_backup ::= function_arglist_backup
+                            | "optional?" "scheme?" function_arglist_skip_backup
+
+music_function_call ::= MUSIC_FUNCTION function_arglist
+
+optional_id ::= ('=' simple_string)?
+
+lyric_mode_music ::= grouped_music_list
+                | MUSIC_IDENTIFIER
+
+mode_changed_music ::= mode_changing_head grouped_music_list
+                  | mode_changing_head_with_context optional_context_mods grouped_music_list
+
+mode_changing_head ::= "\\notemode"
+                  | "\\drummode"
+                  | "\\figuremode"
+                  | "\\chordmode"
+                  | "\\lyricmode"
+
+mode_changing_head_with_context ::= "\\drums"
+                               | "\\figures"
+                               | "\\chords"
+                               | "\\lyrics"
+
+context_change ::= "\\change" symbol '=' simple_string
+
+property_path ::= symbol_list_rev
+
+property_operation ::= symbol '=' scalar
+                  | "\\unset" symbol
+                  | "\\override" revert_arg '=' scalar
+                  | "\\revert" revert_arg
+
+revert_arg ::= revert_arg_backup "(backed-up?)" symbol_list_arg
+
+revert_arg_backup ::= symbol_list_part
+               ( "(backed-up?)" SCM_ARG '.' symbol_list_part
+               | "(backed-up?)" SCM_ARG ',' symbol_list_part
+               | "(backed-up?)" SCM_ARG symbol_list_part
+               )*
+
+context_def_mod ::= "\\consists"
+               | "\\remove"
+               | "\\accepts"
+               | "\\defaultchild"
+               | "\\denies"
+               | "\\alias"
+               | "\\type"
+               | "\\description"
+               | "\\name"
+
+context_mod ::= property_operation
+           | context_def_mod STRING
+           | context_def_mod SYMBOL
+           | context_def_mod embedded_scm
+
+grob_prop_spec ::= symbol_list_rev
+
+grob_prop_path ::= grob_prop_spec
+              | grob_prop_spec property_path
+
+context_prop_spec ::= symbol_list_rev
+
+simple_revert_context ::= symbol_list_part
+
+music_property_def ::= "\\override" grob_prop_path '=' scalar
+                  | "\\revert" simple_revert_context revert_arg
+                  | "\\set" context_prop_spec '=' scalar
+                  | "\\unset" context_prop_spec
+
+string ::= STRING
+      | SYMBOL
+      | full_markup
+
+text ::= STRING
+    | SYMBOL
+    | full_markup
+    | embedded_scm_bare
+
+simple_string ::= STRING
+             | SYMBOL
+             | embedded_scm_bare
+
+symbol ::= STRING
+      | SYMBOL
+      | embedded_scm_bare
+
+scalar ::= embedded_scm_arg
+      | pitch_or_music
+      | SCM_IDENTIFIER
+      | bare_number
+      | '-' bare_number
+      | string
+      | symbol_list_part_bare '.' property_path
+      | symbol_list_part_bare ',' property_path
+
+event_chord ::= simple_element post_events
+           | CHORD_REPETITION optional_notemode_duration post_events
+           | MULTI_MEASURE_REST optional_notemode_duration post_events
+           | tempo_event
+           | note_chord_element
+
+note_chord_element ::= chord_body optional_notemode_duration post_events
+
+chord_body ::= "<" chord_body_elements ">"
+          | FIGURE_OPEN figure_list FIGURE_CLOSE
+
+chord_body_elements ::= chord_body_element*
+
+chord_body_element ::= pitch_or_tonic_pitch exclamations questions octave_check post_events
+                  | DRUM_PITCH post_events
+                  | music_function_chord_body
+                  | post_event
+
+music_function_chord_body ::= music_function_call
+                         | MUSIC_IDENTIFIER
+                         | embedded_scm
+
+event_function_event ::= EVENT_FUNCTION function_arglist
+
+post_events ::= post_event*
+
+post_event_nofinger ::= direction_less_event
+                   | script_dir music_function_call
+                   | "--"
+                   | "__"
+                   | script_dir direction_reqd_event
+                   | script_dir direction_less_event
+                   | '^' fingering
+                   | '_' fingering
+
+post_event ::= post_event_nofinger
+          | '-' fingering
+
+string_number_event ::= E_UNSIGNED
+
+direction_less_event ::= string_number_event
+                    | EVENT_IDENTIFIER
+                    | tremolo_type
+                    | event_function_event
+
+direction_reqd_event ::= gen_text_def
+                    | script_abbreviation
+
+octave_check ::= ('=' quotes)?
+
+quotes ::= (sub_quotes | sup_quotes)?
+
+erroneous_quotes ::= quotes
+
+sup_quotes ::= "'"+
+
+sub_quotes ::= ','+
+
+steno_pitch ::= NOTENAME_PITCH quotes
+
+steno_tonic_pitch ::= TONICNAME_PITCH quotes
+
+pitch ::= steno_pitch
+     | PITCH_IDENTIFIER quotes
+
+pitch_or_tonic_pitch ::= pitch
+                    | steno_tonic_pitch
+
+gen_text_def ::= full_markup
+            | STRING
+            | SYMBOL
+            | embedded_scm
+
+fingering ::= UNSIGNED
+
+script_abbreviation ::= '^'
+                   | '+'
+                   | '-'
+                   | '!'
+                   | ">"
+                   | '.'
+                   | '_'
+
+script_dir ::= '_'
+          | '^'
+          | '-'
+
+maybe_notemode_duration ::= duration?
+
+optional_notemode_duration ::= maybe_notemode_duration
+
+steno_duration ::= UNSIGNED dots
+              | DURATION_IDENTIFIER dots
+
+duration ::= steno_duration multipliers
+
+dots ::= '.'*
+
+multiplier_scm ::= NUMBER_IDENTIFIER
+              | embedded_scm_bare
+
+multipliers ::= ( '*' UNSIGNED
+                | '*' FRACTION
+                | '*' multiplier_scm
+                )*
+
+tremolo_type ::= ':'
+            | ':' UNSIGNED
+
+bass_number ::= UNSIGNED
+           | STRING
+           | SYMBOL
+           | full_markup
+           | embedded_scm_bare
+
+bass_figure ::= ("_" | bass_number)
+           ( ']'
+           | FIGURE_ALTERATION_EXPR
+           | figured_bass_modification
+           )*
+
+figured_bass_modification ::= "\\+"
+                         | "\\!"
+                         | '/'
+                         | "\\\\"
+
+br_bass_figure ::= bass_figure
+              | '[' bass_figure
+
+figure_list ::= br_bass_figure*
+
+optional_rest ::= "\\rest"?
+
+pitch_or_music ::= pitch exclamations questions octave_check maybe_notemode_duration erroneous_quotes optional_rest post_events
+              | new_chord post_events
+
+simple_element ::= DRUM_PITCH optional_notemode_duration
+              | RESTNAME optional_notemode_duration
+
+lyric_element ::= full_markup
+             | SYMBOL
+             | STRING
+             | LYRIC_ELEMENT
+
+lyric_element_music ::= lyric_element optional_notemode_duration post_events
+
+new_chord ::= steno_tonic_pitch maybe_notemode_duration
+         | steno_tonic_pitch optional_notemode_duration chord_separator chord_items
+
+chord_items ::= chord_item*
+
+chord_separator ::= ":"
+               | "^"
+               | "/" steno_tonic_pitch
+               | "/+" steno_tonic_pitch
+
+chord_item ::= chord_separator
+          | step_numbers
+          | CHORD_MODIFIER
+
+step_numbers ::= step_number ('.' step_number)*
+
+step_number ::= UNSIGNED
+           | UNSIGNED '+'
+           | UNSIGNED "-"
+
+tempo_range ::= exact_unsigned_number
+           | exact_unsigned_number '-' exact_unsigned_number
+
+number_expression ::= number_term (('+' | '-') number_term)*
+
+number_term ::= number_factor
+           | number_factor '*' number_factor
+           | number_factor '/' number_factor
+
+number_factor ::= '-' number_factor
+             | bare_number
+
+bare_number_common ::= REAL
+                  | NUMBER_IDENTIFIER
+                  | REAL NUMBER_IDENTIFIER
+
+bare_number ::= bare_number_common
+           | UNSIGNED
+           | UNSIGNED NUMBER_IDENTIFIER
+
+exact_unsigned_number ::= UNSIGNED
+                     | NUMBER_IDENTIFIER
+                     | embedded_scm
+
+unsigned_integer ::= UNSIGNED
+                | NUMBER_IDENTIFIER
+                | embedded_scm
+
+exclamations ::= '!'*
+
+questions ::= '?'*
+
+full_markup_list ::= "\\markuplist" markup_list
+
+markup_mode ::= "\\markup"
+
+markup_mode_word ::= markup_mode markup_word
+
+full_markup ::= markup_mode markup_top
+              | markup_mode_word
+
+partial_markup ::= markup_mode markup_partial_function "\\etc"
+
+markup_top ::= markup_list
+             | markup_head_1_list simple_markup
+             | simple_markup_noword
+
+markup_scm ::= embedded_scm "(backed-up?)"
+
+markup_list ::= markup_composed_list
+              | markup_uncomposed_list
+
+markup_uncomposed_list ::= markup_braced_list
+                         | markup_command_list
+                         | markup_scm MARKUPLIST_IDENTIFIER
+                         | "\\score-lines" '{' score_body '}'
+
+markup_composed_list ::= markup_head_1_list markup_uncomposed_list
+
+markup_braced_list ::= '{' markup_braced_list_body '}'
+
+markup_braced_list_body ::= (markup | markup_list)*
+
+markup_command_list ::= MARKUP_LIST_FUNCTION markup_command_list_arguments
+
+markup_command_basic_arguments ::= "markup-list?" markup_command_list_arguments markup_list
+                                 | "scheme?" markup_command_list_arguments embedded_scm
+                                 | "scheme?" markup_command_list_arguments '{' embedded_lilypond '}'
+                                 | "scheme?" markup_command_list_arguments mode_changed_music
+                                 | "scheme?" markup_command_list_arguments MUSIC_IDENTIFIER
+                                 | "scheme?" markup_command_list_arguments STRING
+                                 | EXPECT_NO_MORE_ARGS
+
+markup_command_list_arguments ::= markup_command_basic_arguments
+                                | "markup?" markup_command_list_arguments markup
+
+markup_partial_function ::= MARKUP_FUNCTION markup_arglist_partial
+                          | markup_head_1_list MARKUP_FUNCTION markup_arglist_partial
+
+markup_arglist_partial ::= "markup?" markup_arglist_partial
+                         | "markup-list?" markup_arglist_partial
+                         | "scheme?" markup_arglist_partial
+                         | "markup?" markup_command_list_arguments
+                         | "markup-list?" markup_command_list_arguments
+                         | "scheme?" markup_command_list_arguments
+
+markup_head_1_item ::= MARKUP_FUNCTION "markup?" markup_command_list_arguments
+
+markup_head_1_list ::= markup_head_1_item+
+
+markup_word ::= STRING
+              | SYMBOL
+
+simple_markup ::= markup_word
+                | simple_markup_noword
+
+simple_markup_noword ::= "\\score" '{' score_body '}'
+                       | MARKUP_FUNCTION markup_command_basic_arguments
+                       | markup_scm MARKUP_IDENTIFIER
+
+markup ::= markup_head_1_list simple_markup
+         | simple_markup
