@@ -88,6 +88,7 @@ embedded_scm_bare ::= SCM_TOKEN
 embedded_scm_active ::= SCM_IDENTIFIER
                    | scm_function_call
                    | lookup
+
 embedded_scm_bare_arg ::= SCM_ARG
                      | SCM_TOKEN
                      | FRACTION
@@ -101,6 +102,7 @@ embedded_scm_bare_arg ::= SCM_ARG
                      | bookpart_block
                      | output_def
                      | lookup
+
 embedded_scm ::= embedded_scm_bare
             | scm_function_call
             | lookup
@@ -128,17 +130,22 @@ embedded_lilypond ::= (
 lilypond_header_body ::= (assignment | SCM_TOKEN | embedded_scm_active)*
 
 lilypond_header ::= "\\header" '{' lilypond_header_body '}'
+
 header_block ::= lilypond_header
+
 assignment_id ::= STRING
              | SYMBOL
+
 assignment ::= assignment_id '=' identifier_init
           | assignment_id '.' property_path '=' identifier_init
           | markup_mode_word '=' identifier_init
+
 identifier_init ::= identifier_init_nonumber
                | number_expression
                | symbol_list_part_bare '.' property_path
                | symbol_list_part_bare ',' property_path
                | post_event_nofinger post_events
+
 identifier_init_nonumber ::= header_block
                         | score_block
                         | book_block
@@ -154,6 +161,7 @@ identifier_init_nonumber ::= header_block
                         | full_markup_list
                         | context_modification
                         | partial_function "\\etc"
+
 partial_function_scriptable ::= MUSIC_FUNCTION function_arglist_partial
                            | EVENT_FUNCTION function_arglist_partial
                            | SCM_FUNCTION function_arglist_partial
@@ -163,6 +171,7 @@ partial_function_scriptable ::= MUSIC_FUNCTION function_arglist_partial
                            | MUSIC_FUNCTION "optional?" "scheme?" function_arglist_nonbackup partial_function
                            | EVENT_FUNCTION "optional?" "scheme?" function_arglist_nonbackup partial_function
                            | SCM_FUNCTION "optional?" "scheme?" function_arglist_nonbackup partial_function
+
 partial_function ::= partial_function_scriptable
                 | "\\override" grob_prop_path '='
                 | "\\set" context_prop_spec '='
@@ -248,28 +257,39 @@ tempo_event ::= "\\tempo" steno_duration '=' tempo_range
 music_list ::= (music_embedded | error)*
 
 braced_music_list ::= '{' music_list '}'
+
 music ::= music_assign
      | lyric_element_music
      | pitch_as_music
+
 pitch_as_music ::= pitch_or_music
+
 music_embedded ::= music
               | post_event
               | music_embedded_backup
               | music_embedded_backup "(backed-up?)" lyric_element_music
               | duration post_events
+
 music_embedded_backup ::= embedded_scm
+
 music_assign ::= simple_music
             | composite_music
+
 repeated_music ::= "\\repeat" simple_string unsigned_integer music
               | "\\repeat" simple_string unsigned_integer music alternative_music
+
 alternative_music ::= "\\alternative" basic_music
+
 sequential_music ::= "\\sequential" braced_music_list
                 | braced_music_list
+
 simultaneous_music ::= "\\simultaneous" braced_music_list
                   | "<<" music_list ">>"
+
 simple_music ::= event_chord
             | music_property_def
             | context_change
+
 context_modification ::= "\\with" '{' context_mod_list '}'
                     | "\\with" context_modification_arg
 
