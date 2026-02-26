@@ -89,6 +89,7 @@ unit ::= command
   | MINUS
   | STAR
   | HAT
+  | AMPERSAND
   | QUESTION_MARK
   | EXCLAMATION_MARK
   | EQUALS
@@ -102,8 +103,10 @@ unit ::= command
   | MULTI_VOICE_END
   | SMALLER
   | GREATER
-  | STRING_LITERAL
+  | string_lit
   | WORD
+
+string_lit ::= QUOTE (STRING_LITERAL_CHAR | ESCAPED_QUOTE | ESCAPED_BACKSLASH)* QUOTE
 
 // TODO implement https://www.scheme.com/tspl2d/grammar.html
 // Scheme parser has to be implemented here. Language injection is not possible because of nesting (LilyPond in Scheme and vice versa)
@@ -119,7 +122,7 @@ scm_id ::= (SCM_IDENTIFIER | SCM_PLUS | SCM_MINUS | SCM_SLASH | SCM_STAR)
 scm_unit ::= SCM_COMMA
   | SCM_SINGLE_QUOTE
   | SCM_DOT
-  | SCM_STRING_LITERAL
+  | string_lit
   | SCM_SMALLER
   | SCM_GREATER
   | SCM_QUESTION_MARK
@@ -128,10 +131,8 @@ scm_unit ::= SCM_COMMA
   | SCM_AT
   | SCM_TRUE
   | SCM_FALSE
-  | scm_char_start
+  | SCM_CHAR_START
   | ((SCM_HASH | SCM_SINGLE_QUOTE)? (scm_number | scm_id) (SCM_QUESTION_MARK | SCM_EXCLAMATION_MARK)?)
-
-scm_char_start ::= SCM_HASH SCM_BACKSLASH
 
 scm_number ::= SCM_MINUS? SCM_DIGIT+
 
