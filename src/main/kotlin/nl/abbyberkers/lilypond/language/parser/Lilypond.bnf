@@ -13,98 +13,140 @@
   tokenTypeClass="nl.abbyberkers.lilypond.language.psi.LilypondTokenType"
 
   tokens = [
-    BACKSLASH='\'
-    DIGIT="regexp:\d"
-    DOT="."
-    COMMA=","
-    SINGLE_QUOTE="'"
-    TILDE="~"
-    BAR="|"
-    SLASH="/"
-    COLON=":"
-    UNDERSCORE="_"
-    PLUS="+"
-    MINUS="-"
-    STAR="*"
-    HAT="^"
-    QUESTION_MARK="?"
-    EXCLAMATION_MARK="!"
-    BACKTICK="`"
 
-    EQUALS="="
-    LEFT_BRACE="{"
-    RIGHT_BRACE="}"
-    LEFT_BRACKET="["
-    RIGHT_BRACKET="]"
-    LEFT_PAREN="("
-    RIGHT_PAREN=")"
-
-    MULTI_VOICE_START="<<"
-    MULTI_VOICE_END=">>"
-    SMALLER="<"
-    GREATER=">"
-
-    SCM_START="#"
-    SCM_CONTINUE="#}"
-    SCM_LILY_START="#{"
-    SCM_START_DOLLAR="$"
-
-    STRING_LITERAL="regexp:\"[^\"]*\""
-    WHITESPACE="regexp:\s+"
-    BLOCK_COMMENT="regexp:%\{(.|\n)*%}"
-    LINE_COMMENT="regexp:%[^{].*"
-
-    SCM_IDENTIFIER="regexp:[a-zA-Z-:]+"
-    SCM_BLOCK_COMMENT="regexp:#!\{(.|\n)*!#"
-    SCM_LINE_COMMENT="regexp:;.*"
-
-    WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+"
   ]
 }
 
-// Parser is stupid and ridiculously simple on purpose. LilyPond allows almost anything, everywhere, so for now keep it simple
-// and add complexity when it is useful for implementing a feature.
-lilypondFile ::= (base_expression | BLOCK_COMMENT | LINE_COMMENT)*
+// notes
+// - all <...>_IDENTIFIERs can be replaced with SCM_IDENTIFIER. Semantics don't matter for our purposes for now.
+//   If they ever do, see scan_scm_id in LilyPonds lexer.ll and try_special_identifiers in their parser.yy.
 
-base_expression ::= expression | braced_expression | scheme_expression
+lilypondFile ::= (toplevel_expression | assignment | BLOCK_COMMENT | LINE_COMMENT)*
 
-command ::= BACKSLASH WORD
+toplevel_expression ::= header_block
+//                   | book_block
+//                   | bookpart_block
+//                   | BOOK_IDENTIFIER
+//                   | score_block
+//                   | composite_music
+//                   | full_markup
+//                   | full_markup_list
+//                   | SCM_TOKEN
+//                   | embedded_scm_active
+//                   | output_def
 
-braced_expression ::= LEFT_BRACE unit* RIGHT_BRACE {pin=3}
+header_block ::= "\\header" '{' header_block_body '}'
 
-expression ::= unit+
+header_block_body ::= (assignment | SCM_START | scheme_expression)*
 
-unit ::= command
-  | DIGIT
-  | DOT
-  | COMMA
-  | SINGLE_QUOTE
-  | TILDE
-  | BAR
-  | SLASH
-  | BACKSLASH
-  | COLON
-  | UNDERSCORE
-  | PLUS
-  | MINUS
-  | STAR
-  | HAT
-  | AMPERSAND
-  | QUESTION_MARK
-  | EXCLAMATION_MARK
-  | EQUALS
-  | LEFT_BRACE
-  | RIGHT_BRACE
-  | LEFT_BRACKET
-  | RIGHT_BRACKET
-  | LEFT_PAREN
-  | RIGHT_PAREN
-  | MULTI_VOICE_START
-  | MULTI_VOICE_END
-  | SMALLER
-  | GREATER
-  | string_lit
-  | WORD
+assignment ::= assignment_id '=' identifier_init
+             | assignment_id '.' property_path '=' identifier_init
+             | markup_mode_word '=' identifier_init
+
+assignment_id ::= string_lit | SYMBOL
+
+identifier_init ::= identifier_init_nonumber
+                  | number_expression
+                  | symbol_list_part_bare '.' property_path
+                  | symbol_list_part_bare ',' property_path
+//                  | post_event_nofinger post_event*
+
+identifier_init_nonumber ::= header_block
+//                        | score_block
+//                        | book_block
+//                        | bookpart_block
+//                        | output_def
+//                        | context_def_spec_block
+//                        | music_assign
+//                        | pitch_or_music
+//                        | FRACTION
+                        | string_lit
+//                        | embedded_scm
+//                        | partial_markup
+//                        | full_markup_list
+//                        | context_modification
+//                        | partial_function "\\etc"
+
+property_path ::= symbol_list_rev
+
+symbol_list_rev ::= symbol_list_part (('.' | ',') symbol_list_part)*
+
+symbol_list_part ::= symbol_list_part_bare
+                   | scheme_expression
+
+symbol_list_part_bare ::= SYMBOL
+                        | symbol_list_element
+
+symbol_list_element ::= string_lit
+                      | unsigned
+
+unsigned ::= digit+
+e_unsigned ::= BACKSLASH unsigned
+fraction ::= unsigned SLASH unsigned
+int ::= MINUS? unsigned
+real ::= int DOT digit+
+
+number_expression ::= number_term (('+' | '-') number_term)*
+
+number_term ::= number_factor
+              | number_factor '*' number_factor
+              | number_factor '/' number_factor
+
+number_factor ::= '-'* bare_number
+
+bare_number ::= bare_number_common
+              | unsigned SCM_IDENTIFIER?
+
+bare_number_common ::= real
+                     | SCM_IDENTIFIER
+                     | real SCM_IDENTIFIER
+
+markup_mode ::= "\\markup"
+
+markup_mode_word ::= markup_mode markup_word
+
+markup_word ::= string_lit
+              | SYMBOL
+// old lilypond
+//base_expression ::= expression | braced_expression | scheme_expression
+//
+//command ::= BACKSLASH WORD
+//
+//braced_expression ::= LEFT_BRACE unit* RIGHT_BRACE {pin=3}
+//
+//expression ::= unit+
+//
+//unit ::= command
+//  | DIGIT
+//  | DOT
+//  | COMMA
+//  | SINGLE_QUOTE
+//  | TILDE
+//  | BAR
+//  | SLASH
+//  | BACKSLASH
+//  | COLON
+//  | UNDERSCORE
+//  | PLUS
+//  | MINUS
+//  | STAR
+//  | HAT
+//  | AMPERSAND
+//  | QUESTION_MARK
+//  | EXCLAMATION_MARK
+//  | EQUALS
+//  | LEFT_BRACE
+//  | RIGHT_BRACE
+//  | LEFT_BRACKET
+//  | RIGHT_BRACKET
+//  | LEFT_PAREN
+//  | RIGHT_PAREN
+//  | MULTI_VOICE_START
+//  | MULTI_VOICE_END
+//  | SMALLER
+//  | GREATER
+//  | string_lit
+//  | WORD
 
 string_lit ::= QUOTE (STRING_LITERAL_CHAR | ESCAPED_QUOTE | ESCAPED_BACKSLASH)* QUOTE
 

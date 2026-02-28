@@ -46,7 +46,7 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
 
 WHITE_SPACE=\s+
 
-WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
+SYMBOL=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
 DIGIT=[0-9]
 WHITESPACE=[ \t\n\x0B\f\r]+
 BLOCK_COMMENT=%\{(.|\n)*?%}
@@ -63,34 +63,36 @@ SCM_LINE_COMMENT=;.*
 
 <YYINITIAL> {
   "\""                   { yypushState(STRING); return QUOTE; }
-  "|"                    { return BAR; }
+//  "|"                    { return BAR; }
   "/"                    { return SLASH; }
   "\\"                   { return BACKSLASH; }
-  ":"                    { return COLON; }
-  "_"                    { return UNDERSCORE; }
-  "+"                    { return PLUS; }
+//  ":"                    { return COLON; }
+//  "__"                   { return EXTENDER; }
+//  "_"                    { return UNDERSCORE; }
+//  "+"                    { return PLUS; }
+//  "--"                   { return HYPHEN; }
   "-"                    { return MINUS; }
-  "*"                    { return STAR; }
-  "^"                    { return HAT; }
-  "="                    { return EQUALS; }
+//  "*"                    { return STAR; }
+//  "^"                    { return HAT; }
+//  "="                    { return EQUALS; }
   "."                    { return DOT; }
-  ","                    { return COMMA; }
-  "'"                    { return SINGLE_QUOTE; }
-  "~"                    { return TILDE; }
-  "&"                    { return AMPERSAND; }
-  "{"                    { return LEFT_BRACE; }
-  "}"                    { return RIGHT_BRACE; }
-  "["                    { return LEFT_BRACKET; }
-  "]"                    { return RIGHT_BRACKET; }
-  "?"                    { return QUESTION_MARK; }
-  "!"                    { return EXCLAMATION_MARK; }
-  "("                    { return LEFT_PAREN; }
-  ")"                    { return RIGHT_PAREN; }
-  "<<"                   { return MULTI_VOICE_START; }
-  ">>"                   { return MULTI_VOICE_END; }
+//  ","                    { return COMMA; }
+//  "'"                    { return SINGLE_QUOTE; }
+//  "~"                    { return TILDE; }
+//  "&"                    { return AMPERSAND; }
+//  "{"                    { return LEFT_BRACE; }
+//  "}"                    { return RIGHT_BRACE; }
+//  "["                    { return LEFT_BRACKET; }
+//  "]"                    { return RIGHT_BRACKET; }
+//  "?"                    { return QUESTION_MARK; }
+//  "!"                    { return EXCLAMATION_MARK; }
+//  "("                    { return LEFT_PAREN; }
+//  ")"                    { return RIGHT_PAREN; }
+//  "<<"                   { return MULTI_VOICE_START; }
+//  ">>"                   { return MULTI_VOICE_END; }
   // Tokenizer is greedy, so these should come after their double variant.
-  "<"                    { return SMALLER; }
-  ">"                    { return GREATER; }
+//  "<"                    { return SMALLER; }
+//  ">"                    { return GREATER; }
   "#}"                   { yypushState(SCHEME); schemeBracketsOpenStack.pop(); return SCM_CONTINUE; }
   "#"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START; }
   "$"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START_DOLLAR; }
@@ -99,7 +101,7 @@ SCM_LINE_COMMENT=;.*
   {WHITESPACE}           { return WHITE_SPACE; }
   {BLOCK_COMMENT}        { return BLOCK_COMMENT; }
   {LINE_COMMENT}         { return LINE_COMMENT; }
-  {WORD}                 { return WORD; }
+  {SYMBOL}               { return SYMBOL; }
 
 }
 
@@ -158,7 +160,7 @@ SCM_LINE_COMMENT=;.*
   "<"                    { return SCM_SMALLER; }
   ">"                    { return SCM_GREATER; }
   "`"                    { return SCM_BACKTICK; }
-  "}"                    { yypopState(); return LEFT_BRACE; }
+//  "}"                    { yypopState(); return LEFT_BRACE; }
   {DIGIT}                { return SCM_DIGIT; }
   {SCM_IDENTIFIER}       { return SCM_IDENTIFIER; }
   {SCM_BLOCK_COMMENT}        { return SCM_BLOCK_COMMENT; }
