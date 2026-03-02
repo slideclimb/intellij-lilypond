@@ -63,6 +63,8 @@ SCM_LINE_COMMENT=;.*
 
 <YYINITIAL> {
   "\""                   { yypushState(STRING); return QUOTE; }
+  "\\new"                { return NEW_COMMAND; }
+  "\\chords"             { return CHORDS_COMMAND; }
 //  "|"                    { return BAR; }
   "/"                    { return SLASH; }
   "\\"                   { return BACKSLASH; }
@@ -74,10 +76,10 @@ SCM_LINE_COMMENT=;.*
   "-"                    { return MINUS; }
 //  "*"                    { return STAR; }
 //  "^"                    { return HAT; }
-//  "="                    { return EQUALS; }
+  "="                    { return EQUALS; }
   "."                    { return DOT; }
 //  ","                    { return COMMA; }
-//  "'"                    { return SINGLE_QUOTE; }
+  "'"                    { return SINGLE_QUOTE; }
 //  "~"                    { return TILDE; }
 //  "&"                    { return AMPERSAND; }
 //  "{"                    { return LEFT_BRACE; }
@@ -86,8 +88,8 @@ SCM_LINE_COMMENT=;.*
 //  "]"                    { return RIGHT_BRACKET; }
 //  "?"                    { return QUESTION_MARK; }
 //  "!"                    { return EXCLAMATION_MARK; }
-//  "("                    { return LEFT_PAREN; }
-//  ")"                    { return RIGHT_PAREN; }
+  "("                    { return LEFT_PAREN; }
+  ")"                    { return RIGHT_PAREN; }
 //  "<<"                   { return MULTI_VOICE_START; }
 //  ">>"                   { return MULTI_VOICE_END; }
   // Tokenizer is greedy, so these should come after their double variant.

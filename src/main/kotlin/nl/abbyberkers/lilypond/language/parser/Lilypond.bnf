@@ -21,9 +21,11 @@
 // - all <...>_IDENTIFIERs can be replaced with SCM_IDENTIFIER. Semantics don't matter for our purposes for now.
 //   If they ever do, see scan_scm_id in LilyPonds lexer.ll and try_special_identifiers in their parser.yy.
 
-lilypondFile ::= (toplevel_expression | assignment | BLOCK_COMMENT | LINE_COMMENT)*
+lilypondFile ::= (toplevel_expression | BLOCK_COMMENT | LINE_COMMENT)*
 
-toplevel_expression ::= header_block
+private toplevel_expression ::= version
+                      | assignment
+                      | header_block
                       | book_block
                       | bookpart_block
                       | scheme_identifier_lily /*BOOK_IDENTIFIER*/
@@ -34,6 +36,11 @@ toplevel_expression ::= header_block
                       | SCM_START /*SCM_TOKEN*/
                       | scheme_expression /*embedded_scm_active*/
                       | output_def
+                      | command
+
+version ::= "\\version" string_lit
+
+command ::= BACKSLASH SYMBOL
 
 basic_music ::= scheme_expression /* music_function_call */
               | repeated_music
@@ -46,14 +53,18 @@ contextable_music ::= basic_music
                     | pitch_as_music
                     | event_chord
 
-contexted_basic_music ::= context_prefix ((contextable_music /* TODO new_lyrics? */) | contexted_basic_music)
+contexted_basic_music ::= context_prefix ((contextable_music new_lyrics?) | contexted_basic_music)
 
-composite_music ::= basic_music /* TODO new_lyrics? */
+composite_music ::= basic_music new_lyrics?
                   | contexted_basic_music
 
 music_bare ::= mode_changed_music
              | scheme_identifier_lily /*MUSIC_IDENTIFIER*/
              | grouped_music_list
+             | relative_music
+             | command
+
+relative_music ::= "\\relative" pitch braced_music_list
 
 grouped_music_list ::= simultaneous_music
                      | sequential_music
@@ -74,8 +85,10 @@ simple_music ::= event_chord
                | context_change
 
 tempo_event ::= "\\tempo" steno_duration '=' tempo_range
-              | "\\tempo" text steno_duration '=' tempo_range
-              | "\\tempo" text
+              | "\\tempo" (str | scheme_expression) steno_duration '=' tempo_range
+              | "\\tempo" (str | scheme_expression)
+
+new_lyrics ::= ("\\addlyrics" optional_context_mods lyric_mode_music)+
 
 braced_music_list ::= '{' music_list '}'
 
@@ -83,8 +96,8 @@ braced_music_list ::= '{' music_list '}'
 music_list ::= (music_embedded)*
 
 music ::= music_assign
-        | lyric_element_music
         | pitch_as_music
+        | lyric_element_music
 
 music_assign ::= simple_music
                | composite_music
@@ -100,6 +113,7 @@ optional_id ::= ('=' simple_string)?
 
 lyric_mode_music ::= grouped_music_list
                    | scheme_identifier_lily /*MUSIC_IDENTIFIER*/
+                   | command
 
 mode_changed_music ::= mode_changing_head grouped_music_list
                      | mode_changing_head_with_context optional_context_mods grouped_music_list
@@ -112,7 +126,7 @@ mode_changing_head ::= "\\notemode"
 
 mode_changing_head_with_context ::= "\\drums"
                                   | "\\figures"
-                                  | "\\chords"
+                                  | CHORDS_COMMAND
                                   | "\\lyrics"
 
 context_change ::= "\\change" simple_string '=' simple_string
@@ -123,9 +137,9 @@ property_operation ::= simple_string '=' scalar
                      | "\\revert" property_path
 
 context_prefix ::= "\\context" str optional_id optional_context_mods
-                 | "\\new" str optional_id optional_context_mods
+                 | NEW_COMMAND str optional_id optional_context_mods
 
-optional_context_mods ::= context_modification_mods_list
+optional_context_mods ::= context_modification_mods_list?
 
 context_modification_mods_list ::= context_modification*
 
@@ -178,11 +192,6 @@ str ::= string_lit
       | SYMBOL
       | full_markup
 
-text ::= string_lit
-       | SYMBOL
-       | full_markup
-       | scheme_expression /*embedded_scm_bare*/
-
 simple_string ::= string_lit
                 | SYMBOL
                 | scheme_expression
@@ -196,6 +205,7 @@ scalar ::= scheme_expression
          | str
          | symbol_list_part_bare '.' property_path
          | symbol_list_part_bare ',' property_path
+         | command
 
 event_chord ::= simple_element post_events
               | CHORD_REPETITION optional_notemode_duration post_events
@@ -210,7 +220,7 @@ chord_body ::= "<" chord_body_elements ">"
 
 chord_body_elements ::= chord_body_element*
 
-chord_body_element ::= pitch_or_tonic_pitch exclamations questions octave_check post_events
+chord_body_element ::= pitch_or_tonic_pitch exclamations questions octave_check? slur? post_events
                      | DRUM_PITCH post_events
                      | scheme_expression /*music_function_call | MUSIC_IDENTIFIER | embedded_scm*/
                      | post_event
@@ -231,9 +241,9 @@ header_block ::= "\\header" '{' header_block_body '}'
 
 header_block_body ::= (assignment | scheme_expression | SCM_START)*
 
-assignment ::= assignment_id '=' identifier_init
-             | assignment_id '.' property_path '=' identifier_init
-             | markup_mode_word '=' identifier_init
+assignment ::= assignment_id ('.' property_path)? EQUALS identifier_init
+             | markup_mode_word EQUALS identifier_init
+             {pin=2}
 
 assignment_id ::= string_lit | SYMBOL
 
@@ -291,7 +301,7 @@ score_items ::= score_item* header_block
 
 book_block ::= "\\book" '{' book_body '}'
 
-book_body ::= scheme_identifier_lily? /*BOOK_IDENTIFIER*/ (
+book_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
               paper_block
             | bookpart_block
             | score_block
@@ -307,7 +317,7 @@ book_body ::= scheme_identifier_lily? /*BOOK_IDENTIFIER*/ (
 
 bookpart_block ::= "\\bookpart" '{' bookpart_body '}'
 
-bookpart_body ::= scheme_identifier_lily? /*BOOK_IDENTIFIER*/ (
+bookpart_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
                   paper_block
                 | score_block
                 | composite_music
@@ -348,26 +358,29 @@ direction_less_event ::= string_number_event
                        | scheme_identifier_lily /*EVENT_IDENTIFIER*/
                        | tremolo_type
                        | scheme_expression /*event_function_event*/
+                       | command
 
 direction_reqd_event ::= gen_text_def
                        | script_abbreviation
 
-octave_check ::= ('=' quotes)?
+octave_check ::= '=' quotes
+
+slur ::= LEFT_PAREN | RIGHT_PAREN
 
 quotes ::= (sub_quotes | sup_quotes)?
 
 erroneous_quotes ::= quotes
 
-sup_quotes ::= "'"+
+sup_quotes ::= SINGLE_QUOTE+
 
 sub_quotes ::= ','+
 
-steno_pitch ::= NOTENAME_PITCH quotes
+steno_pitch ::= SYMBOL /*NOTENAME_PITCH*/ quotes
 
-steno_tonic_pitch ::= TONICNAME_PITCH quotes
+steno_tonic_pitch ::= SYMBOL /*TONICNAME_PITCH*/ quotes
 
 pitch ::= steno_pitch
-        | scheme_identifier_lily /*PITCH_IDENTIFIER*/ quotes
+        | (scheme_identifier_lily | command) /*PITCH_IDENTIFIER*/ quotes
 
 pitch_or_tonic_pitch ::= pitch
                        | steno_tonic_pitch
@@ -393,18 +406,17 @@ script_dir ::= '_'
              | '^'
              | '-'
 
-maybe_notemode_duration ::= duration?
-
-optional_notemode_duration ::= maybe_notemode_duration
+optional_notemode_duration ::= duration?
 
 steno_duration ::= unsigned dots
-                 | scheme_identifier_lily /*DURATION_IDENTIFIER*/ dots
+                 | (scheme_identifier_lily | command) /*DURATION_IDENTIFIER*/ dots
 
 duration ::= steno_duration multipliers
 
 dots ::= '.'*
 
 multiplier_scm ::= scheme_identifier_lily /*NUMBER_IDENTIFIER*/
+                 | command
                  | scheme_expression /*embedded_scm_bare*/
 
 multipliers ::= ('*' (unsigned | fraction | multiplier_scm))*
@@ -435,7 +447,7 @@ figure_list ::= br_bass_figure*
 
 optional_rest ::= "\\rest"?
 
-pitch_or_music ::= pitch exclamations questions octave_check maybe_notemode_duration erroneous_quotes optional_rest post_events
+pitch_or_music ::= pitch exclamations questions octave_check? duration? erroneous_quotes slur? optional_rest post_events
                  | new_chord post_events
 
 simple_element ::= DRUM_PITCH optional_notemode_duration
@@ -444,11 +456,11 @@ simple_element ::= DRUM_PITCH optional_notemode_duration
 lyric_element ::= full_markup
                 | SYMBOL
                 | string_lit
-                | LYRIC_ELEMENT
+                | scheme_expression /*LYRIC_ELEMENT*/
 
 lyric_element_music ::= lyric_element optional_notemode_duration post_events
 
-new_chord ::= steno_tonic_pitch maybe_notemode_duration
+new_chord ::= steno_tonic_pitch duration?
             | steno_tonic_pitch optional_notemode_duration chord_separator chord_items
 
 chord_items ::= chord_item*
@@ -494,11 +506,11 @@ number_term ::= number_factor
 number_factor ::= '-'* bare_number
 
 bare_number ::= bare_number_common
-              | unsigned scheme_identifier_lily?
+              | unsigned (scheme_identifier_lily | command)?
 
 bare_number_common ::= real
-                     | scheme_identifier_lily
-                     | real scheme_identifier_lily
+                     | (scheme_identifier_lily | command)
+                     | real (scheme_identifier_lily | command)
 
 partial_markup ::= markup_mode scheme_expression /*markup_partial_function*/ "\\etc"
 
@@ -542,7 +554,7 @@ simple_markup ::= markup_word
                 | simple_markup_noword
 
 simple_markup_noword ::= "\\score" '{' score_body '}'
-                       | scheme_expression scheme_identifier_lily? /* MARKUP_FUNCTION markup_command_basic_arguments | markup_scm MARKUP_IDENTIFIER*/
+                       | scheme_expression (scheme_identifier_lily | command)? /* MARKUP_FUNCTION markup_command_basic_arguments | markup_scm MARKUP_IDENTIFIER*/
 
 markup ::= markup_head_1_list simple_markup
          | simple_markup
