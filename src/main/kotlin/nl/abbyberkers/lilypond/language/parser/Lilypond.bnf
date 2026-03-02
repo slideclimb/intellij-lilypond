@@ -38,7 +38,7 @@ private toplevel_expression ::= version
                       | output_def
                       | command
 
-version ::= "\\version" string_lit
+version ::= VERSION_COMMAND string_lit
 
 command ::= BACKSLASH SYMBOL
 
@@ -46,8 +46,8 @@ basic_music ::= scheme_expression /* music_function_call */
               | repeated_music
               | alternative_music
               | music_bare
-              | "\\lyricsto" simple_string lyric_mode_music
-              | "\\lyricsto" simple_string '=' simple_string lyric_mode_music
+              | LYRICSTO_COMMAND simple_string lyric_mode_music
+              | LYRICSTO_COMMAND simple_string EQUALS simple_string lyric_mode_music
 
 contextable_music ::= basic_music
                     | pitch_as_music
@@ -64,33 +64,33 @@ music_bare ::= mode_changed_music
              | relative_music
              | command
 
-relative_music ::= "\\relative" pitch braced_music_list
+relative_music ::= RELATIVE_COMMAND pitch braced_music_list
 
 grouped_music_list ::= simultaneous_music
                      | sequential_music
 
-repeated_music ::= "\\repeat" simple_string unsigned_integer music
-                 | "\\repeat" simple_string unsigned_integer music alternative_music
+repeated_music ::= REPEAT_COMMAND simple_string unsigned_integer music
+                 | REPEAT_COMMAND simple_string unsigned_integer music alternative_music
 
-alternative_music ::= "\\alternative" basic_music
+alternative_music ::= ALTERVATIVE_COMMAND basic_music
 
-simultaneous_music ::= "\\simultaneous" braced_music_list
-                     | "<<" music_list ">>"
+simultaneous_music ::= SIMULTANEOUS_COMMAND braced_music_list
+                     | MULTI_VOICE_START music_list MULTI_VOICE_END
 
-sequential_music ::= "\\sequential" braced_music_list
+sequential_music ::= SEQUENTIAL_COMMAND braced_music_list
                    | braced_music_list
 
 simple_music ::= event_chord
                | music_property_def
                | context_change
 
-tempo_event ::= "\\tempo" steno_duration '=' tempo_range
-              | "\\tempo" (str | scheme_expression) steno_duration '=' tempo_range
-              | "\\tempo" (str | scheme_expression)
+tempo_event ::= TEMPO_COMMAND steno_duration EQUALS tempo_range
+              | TEMPO_COMMAND (str | scheme_expression) steno_duration EQUALS tempo_range
+              | TEMPO_COMMAND (str | scheme_expression)
 
-new_lyrics ::= ("\\addlyrics" optional_context_mods lyric_mode_music)+
+new_lyrics ::= (ADDLYRICS_COMMAND optional_context_mods lyric_mode_music)+
 
-braced_music_list ::= '{' music_list '}'
+braced_music_list ::= LEFT_BRACE music_list RIGHT_BRACE
 
 // TODO (music_embedded | error)* parser recovery?
 music_list ::= (music_embedded)*
@@ -109,7 +109,7 @@ music_embedded ::= music
                  | scheme_expression lyric_element_music?/* music_embedded_backup | music_embedded_backup "(backed-up?)" lyric_element_music*/
                  | duration post_events
 
-optional_id ::= ('=' simple_string)?
+optional_id ::= (EQUALS simple_string)?
 
 lyric_mode_music ::= grouped_music_list
                    | scheme_identifier_lily /*MUSIC_IDENTIFIER*/
@@ -118,33 +118,33 @@ lyric_mode_music ::= grouped_music_list
 mode_changed_music ::= mode_changing_head grouped_music_list
                      | mode_changing_head_with_context optional_context_mods grouped_music_list
 
-mode_changing_head ::= "\\notemode"
-                     | "\\drummode"
-                     | "\\figuremode"
-                     | "\\chordmode"
-                     | "\\lyricmode"
+mode_changing_head ::= NOTEMODE_COMMAND
+                     | DRUMMODE_COMMAND
+                     | FIGUREMODE_COMMAND
+                     | CHORDMODE_COMMAND
+                     | LYRICMODE_COMMAND
 
-mode_changing_head_with_context ::= "\\drums"
-                                  | "\\figures"
+mode_changing_head_with_context ::= DRUMS_COMMAND
+                                  | FIGURES_COMMAND
                                   | CHORDS_COMMAND
-                                  | "\\lyrics"
+                                  | LYRICSS_COMMAND
 
-context_change ::= "\\change" simple_string '=' simple_string
+context_change ::= CHANGE_COMMAND simple_string EQUALS simple_string
 
-property_operation ::= simple_string '=' scalar
-                     | "\\unset" simple_string
-                     | "\\override" property_path '=' scalar
-                     | "\\revert" property_path
+property_operation ::= simple_string EQUALS scalar
+                     | UNSET_COMMAND simple_string
+                     | OVERRIDE_COMMAND property_path EQUALS scalar
+                     | REVERT_COMMAND property_path
 
-context_prefix ::= "\\context" str optional_id optional_context_mods
+context_prefix ::= CONTEXT_COMMAND str optional_id optional_context_mods
                  | NEW_COMMAND str optional_id optional_context_mods
 
 optional_context_mods ::= context_modification_mods_list?
 
 context_modification_mods_list ::= context_modification*
 
-context_modification ::= "\\with" '{' context_mod_list '}'
-                       | "\\with" context_modification_arg
+context_modification ::= WITH_COMMAND LEFT_BRACE context_mod_list RIGHT_BRACE
+                       | WITH_COMMAND context_modification_arg
 
 context_modification_arg ::= scheme_expression /*embedded_scm | MUSIC_IDENTIFIER*/
 
@@ -154,22 +154,22 @@ context_mod_list ::= (context_mod | context_mod_arg)*
 context_mod_arg ::= scheme_expression /*embedded_scm*/
                   | composite_music
 
-context_def_mod ::= "\\consists"
-                  | "\\remove"
-                  | "\\accepts"
-                  | "\\defaultchild"
-                  | "\\denies"
-                  | "\\alias"
-                  | "\\type"
-                  | "\\description"
-                  | "\\name"
+context_def_mod ::= CONSISTS_COMMAND
+                  | REMOVE_COMMAND
+                  | ACCEPTS_COMMAND
+                  | DEFAULTCHILD_COMMAND
+                  | DENIES_COMMAND
+                  | ALIAS_COMMAND
+                  | TYPE_COMMAND
+                  | DESCRIPTION_COMMAND
+                  | NAME_COMMAND
 
 context_mod ::= property_operation
               | context_def_mod string_lit
               | context_def_mod SYMBOL
               | context_def_mod scheme_expression /*embedded_scm*/
 
-context_def_spec_block ::= "\\context" '{' context_def_spec_body '}'
+context_def_spec_block ::= CONTEXT_COMMAND LEFT_BRACE context_def_spec_body RIGHT_BRACE
 
 
 context_def_spec_body ::= (context_mod | context_modification| context_mod_arg)*
@@ -183,10 +183,10 @@ context_prop_spec ::= symbol_list_rev
 
 simple_revert_context ::= symbol_list_part
 
-music_property_def ::= "\\override" grob_prop_path '=' scalar
-                     | "\\revert" simple_revert_context property_path
-                     | "\\set" context_prop_spec '=' scalar
-                     | "\\unset" context_prop_spec
+music_property_def ::= OVERRIDE_COMMAND grob_prop_path EQUALS scalar
+                     | REVERT_COMMAND simple_revert_context property_path
+                     | SET_COMMAND context_prop_spec EQUALS scalar
+                     | UNSET_COMMAND context_prop_spec
 
 str ::= string_lit
       | SYMBOL
@@ -201,10 +201,10 @@ scalar ::= scheme_expression
          | pitch_or_music
          | scheme_identifier_lily
          | bare_number
-         | '-' bare_number
+         | MINUS bare_number
          | str
-         | symbol_list_part_bare '.' property_path
-         | symbol_list_part_bare ',' property_path
+         | symbol_list_part_bare DOT property_path
+         | symbol_list_part_bare COMMA property_path
          | command
 
 event_chord ::= simple_element post_events
@@ -215,7 +215,7 @@ event_chord ::= simple_element post_events
 
 note_chord_element ::= chord_body optional_notemode_duration post_events
 
-chord_body ::= "<" chord_body_elements ">"
+chord_body ::= SMALLER chord_body_elements GREATER
              | FIGURE_OPEN figure_list FIGURE_CLOSE
 
 chord_body_elements ::= chord_body_element*
@@ -226,22 +226,22 @@ chord_body_element ::= pitch_or_tonic_pitch exclamations questions octave_check?
                      | post_event
 
 post_event ::= post_event_nofinger
-             | '-' fingering
+             | MINUS fingering
 
 post_event_nofinger ::= direction_less_event
                       | script_dir scheme_expression /*music_function_call*/
-                      | "--"
-                      | "__"
+                      | HYPHEN
+                      | EXTENDER
                       | script_dir direction_reqd_event
                       | script_dir direction_less_event
-                      | '^' fingering
-                      | '_' fingering
+                      | HAT fingering
+                      | UNDERSCORE fingering
 
-header_block ::= "\\header" '{' header_block_body '}'
+header_block ::= HEADER_COMMAND LEFT_BRACE header_block_body RIGHT_BRACE
 
 header_block_body ::= (assignment | scheme_expression | SCM_START)*
 
-assignment ::= assignment_id ('.' property_path)? EQUALS identifier_init
+assignment ::= assignment_id (DOT property_path)? EQUALS identifier_init
              | markup_mode_word EQUALS identifier_init
              {pin=2}
 
@@ -249,8 +249,8 @@ assignment_id ::= string_lit | SYMBOL
 
 identifier_init ::= identifier_init_nonumber
                   | number_expression
-                  | symbol_list_part_bare '.' property_path
-                  | symbol_list_part_bare ',' property_path
+                  | symbol_list_part_bare DOT property_path
+                  | symbol_list_part_bare COMMA property_path
                   | post_event_nofinger post_event*
 
 identifier_init_nonumber ::= header_block
@@ -267,18 +267,18 @@ identifier_init_nonumber ::= header_block
                            | partial_markup
                            | full_markup_list
                            | context_modification
-                           | partial_function "\\etc"
+                           | partial_function ETC_COMMAND
 
-partial_function ::= ( "\\override" grob_prop_path '='
-                     | "\\set" context_prop_spec '='
-                     | "\\repeat" simple_string unsigned_integer
-                     | "\\repeat" simple_string
+partial_function ::= ( OVERRIDE_COMMAND grob_prop_path EQUALS
+                     | SET_COMMAND context_prop_spec EQUALS
+                     | REPEAT_COMMAND simple_string unsigned_integer
+                     | REPEAT_COMMAND simple_string
                      )*
                      (scheme_expression | script_dir markup_mode? scheme_expression?)
 
 property_path ::= symbol_list_rev
 
-symbol_list_rev ::= symbol_list_part (('.' | ',') symbol_list_part)*
+symbol_list_rev ::= symbol_list_part ((DOT | COMMA) symbol_list_part)*
 
 symbol_list_part ::= symbol_list_part_bare
                    | scheme_expression
@@ -289,7 +289,7 @@ symbol_list_part_bare ::= SYMBOL
 symbol_list_element ::= string_lit
                       | unsigned
 
-score_block ::= "\\score" '{' score_body '}'
+score_block ::= SCORE_COMMAND LEFT_BRACE score_body RIGHT_BRACE
 
 score_body ::= score_items /* TODO parser recovery? error* */
 
@@ -299,7 +299,7 @@ score_item ::= scheme_expression
 
 score_items ::= score_item* header_block
 
-book_block ::= "\\book" '{' book_body '}'
+book_block ::= BOOK_COMMAND LEFT_BRACE book_body RIGHT_BRACE
 
 book_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
               paper_block
@@ -315,7 +315,7 @@ book_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
 //            | error
             )*
 
-bookpart_block ::= "\\bookpart" '{' bookpart_body '}'
+bookpart_block ::= BOOKPART_COMMAND LEFT_BRACE bookpart_body RIGHT_BRACE
 
 bookpart_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
                   paper_block
@@ -332,22 +332,22 @@ bookpart_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
 
 paper_block ::= output_def
 
-output_def ::= output_def_body '}'
+output_def ::= output_def_body RIGHT_BRACE
 
-output_def_head ::= "\\paper"
-                  | "\\midi"
-                  | "\\layout"
+output_def_head ::= PAPER_COMMAND
+                  | MIDI_COMMAND
+                  | LAYOUT_COMMAND
 
 output_def_head_with_mode_switch ::= output_def_head
 
-output_def_body ::= output_def_head_with_mode_switch '{'
+output_def_body ::= output_def_head_with_mode_switch LEFT_BRACE
                   ( assignment
                   | scheme_expression /*embedded_scm_active*/
                   | SCM_START
                   | music_or_context_def
 //                  TODO parser recovery?
 //                  | error
-                  )+ '}'
+                  )+ RIGHT_BRACE
 
 music_or_context_def ::= music_assign
                        | context_def_spec_block
@@ -363,7 +363,7 @@ direction_less_event ::= string_number_event
 direction_reqd_event ::= gen_text_def
                        | script_abbreviation
 
-octave_check ::= '=' quotes
+octave_check ::= EQUALS quotes
 
 slur ::= LEFT_PAREN | RIGHT_PAREN
 
@@ -373,7 +373,7 @@ erroneous_quotes ::= quotes
 
 sup_quotes ::= SINGLE_QUOTE+
 
-sub_quotes ::= ','+
+sub_quotes ::= COMMA+
 
 steno_pitch ::= SYMBOL /*NOTENAME_PITCH*/ quotes
 
@@ -394,17 +394,17 @@ string_number_event ::= e_unsigned
 
 fingering ::= unsigned
 
-script_abbreviation ::= '^'
-                      | '+'
-                      | '-'
-                      | '!'
-                      | ">"
-                      | '.'
-                      | '_'
+script_abbreviation ::= HAT
+                      | PLUS
+                      | MINUS
+                      | EXCLAMATION_MARK
+                      | GREATER
+                      | DOT
+                      | UNDERSCORE
 
-script_dir ::= '_'
-             | '^'
-             | '-'
+script_dir ::= UNDERSCORE
+             | HAT
+             | MINUS
 
 optional_notemode_duration ::= duration?
 
@@ -413,15 +413,15 @@ steno_duration ::= unsigned dots
 
 duration ::= steno_duration multipliers
 
-dots ::= '.'*
+dots ::= DOT*
 
 multiplier_scm ::= scheme_identifier_lily /*NUMBER_IDENTIFIER*/
                  | command
                  | scheme_expression /*embedded_scm_bare*/
 
-multipliers ::= ('*' (unsigned | fraction | multiplier_scm))*
+multipliers ::= (STAR (unsigned | fraction | multiplier_scm))*
 
-tremolo_type ::= ':' unsigned?
+tremolo_type ::= COLON unsigned?
 
 bass_number ::= unsigned
               | string_lit
@@ -429,23 +429,23 @@ bass_number ::= unsigned
               | full_markup
               | scheme_expression /*embedded_scm_bare*/
 
-bass_figure ::= ("_" | bass_number)
-              ( ']'
+bass_figure ::= (UNDERSCORE | bass_number)
+              ( RIGHT_BRACKET
               | FIGURE_ALTERATION_EXPR
               | figured_bass_modification
               )*
 
-figured_bass_modification ::= "\\+"
-                            | "\\!"
-                            | '/'
-                            | "\\\\"
+figured_bass_modification ::= ESCAPED_PLUS
+                            | ESCAPED_EXCLAMATION
+                            | SLASH
+                            | ESCAPED_BACKSLASH
 
 br_bass_figure ::= bass_figure
-                 | '[' bass_figure
+                 | LEFT_BRACKET bass_figure
 
 figure_list ::= br_bass_figure*
 
-optional_rest ::= "\\rest"?
+optional_rest ::= REST_COMMAND?
 
 pitch_or_music ::= pitch exclamations questions octave_check? duration? erroneous_quotes slur? optional_rest post_events
                  | new_chord post_events
@@ -465,27 +465,26 @@ new_chord ::= steno_tonic_pitch duration?
 
 chord_items ::= chord_item*
 
-chord_separator ::= ":"
-                  | "^"
-                  | "/" steno_tonic_pitch
-                  | "/+" steno_tonic_pitch
+chord_separator ::= COLON
+                  | HAT
+                  | SLASH PLUS? steno_tonic_pitch
 
 chord_item ::= chord_separator
              | step_numbers
              | CHORD_MODIFIER
 
-step_numbers ::= step_number ('.' step_number)*
+step_numbers ::= step_number (DOT step_number)*
 
-step_number ::= unsigned ('+' | '-')?
+step_number ::= unsigned (PLUS | MINUS)?
 
-tempo_range ::= unsigned_integer ('-' unsigned_integer)?
+tempo_range ::= unsigned_integer (MINUS unsigned_integer)?
 
 unsigned_integer ::= unsigned
                    | scheme_expression /*embedded_scm*/
 
-exclamations ::= '!'*
+exclamations ::= EXCLAMATION_MARK*
 
-questions ::= '?'*
+questions ::= QUESTION_MARK*
 
 unsigned ::= digit+
 
@@ -497,13 +496,13 @@ int ::= MINUS? unsigned
 
 real ::= int DOT digit+
 
-number_expression ::= number_term (('+' | '-') number_term)*
+number_expression ::= number_term ((PLUS | MINUS) number_term)*
 
 number_term ::= number_factor
-              | number_factor '*' number_factor
-              | number_factor '/' number_factor
+              | number_factor STAR number_factor
+              | number_factor SLASH number_factor
 
-number_factor ::= '-'* bare_number
+number_factor ::= MINUS* bare_number
 
 bare_number ::= bare_number_common
               | unsigned (scheme_identifier_lily | command)?
@@ -512,14 +511,14 @@ bare_number_common ::= real
                      | (scheme_identifier_lily | command)
                      | real (scheme_identifier_lily | command)
 
-partial_markup ::= markup_mode scheme_expression /*markup_partial_function*/ "\\etc"
+partial_markup ::= markup_mode scheme_expression /*markup_partial_function*/ ETC_COMMAND
 
 full_markup ::= markup_mode markup_top
               | markup_mode_word
 
-full_markup_list ::= "\\markuplist" markup_list
+full_markup_list ::= MARKUPLIST_COMMAND markup_list
 
-markup_mode ::= "\\markup"
+markup_mode ::= MARKUP_COMMAND
 
 markup_mode_word ::= markup_mode markup_word
 
@@ -536,11 +535,11 @@ markup_list ::= markup_composed_list
 markup_uncomposed_list ::= markup_braced_list
                          | markup_command_list
                          | scheme_expression scheme_identifier_lily /* markup_scm MARKUPLIST_IDENTIFIER*/
-                         | "\\score-lines" '{' score_body '}'
+                         | SCORELINES_COMMAND LEFT_BRACE score_body RIGHT_BRACE
 
 markup_composed_list ::= markup_head_1_list markup_uncomposed_list
 
-markup_braced_list ::= '{' markup_braced_list_body '}'
+markup_braced_list ::= LEFT_BRACE markup_braced_list_body RIGHT_BRACE
 
 markup_braced_list_body ::= (markup | markup_list)*
 
@@ -553,7 +552,7 @@ markup_head_1_list ::= markup_head_1_item+
 simple_markup ::= markup_word
                 | simple_markup_noword
 
-simple_markup_noword ::= "\\score" '{' score_body '}'
+simple_markup_noword ::= SCORE_COMMAND LEFT_BRACE score_body RIGHT_BRACE
                        | scheme_expression (scheme_identifier_lily | command)? /* MARKUP_FUNCTION markup_command_basic_arguments | markup_scm MARKUP_IDENTIFIER*/
 
 markup ::= markup_head_1_list simple_markup

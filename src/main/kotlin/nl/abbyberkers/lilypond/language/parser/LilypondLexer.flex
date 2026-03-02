@@ -63,38 +63,86 @@ SCM_LINE_COMMENT=;.*
 
 <YYINITIAL> {
   "\""                   { yypushState(STRING); return QUOTE; }
+  "\\+"                  { return ESCAPED_PLUS; }
+  "\\!"                  { return ESCAPED_EXCLAMATION; }
+  "\\\\"                 { return ESCAPED_BACKSLASH; }
+  "\\version"            { return VERSION_COMMAND; }
   "\\new"                { return NEW_COMMAND; }
+  "\\header"             { return HEADER_COMMAND; }
+  "\\context"                { return CONTEXT_COMMAND; }
+  "\\with"                { return WITH_COMMAND; }
+  "\\drums"             { return DRUMS_COMMAND; }
+  "\\figures"             { return FIGURES_COMMAND; }
   "\\chords"             { return CHORDS_COMMAND; }
+  "\\lyrics"             { return LYRICSS_COMMAND; }
+  "\\lyricsto"           { return LYRICSTO_COMMAND; }
+  "\\relative"           { return RELATIVE_COMMAND; }
+  "\\repeat"           { return REPEAT_COMMAND; }
+  "\\alternative"           { return ALTERVATIVE_COMMAND; }
+  "\\simultaneous"           { return SIMULTANEOUS_COMMAND; }
+  "\\sequential"         { return SEQUENTIAL_COMMAND; }
+  "\\tempo"              { return TEMPO_COMMAND; }
+  "\\addlyrics"              { return ADDLYRICS_COMMAND; }
+  "\\notemode"              { return  NOTEMODE_COMMAND; }
+  "\\drummode"              { return  DRUMMODE_COMMAND; }
+  "\\figuremode"              { return  FIGUREMODE_COMMAND; }
+  "\\chordmode"              { return  CHORDMODE_COMMAND; }
+  "\\lyricmode"              { return  LYRICMODE_COMMAND; }
+  "\\change"              { return      CHANGE_COMMAND; }
+  "\\unset"                 { return      UNSET_COMMAND; }
+  "\\set"                 { return      SET_COMMAND; }
+  "\\override"              { return      OVERRIDE_COMMAND; }
+  "\\revert"                { return      REVERT_COMMAND; }
+  "\\consists"              { return CONSISTS_COMMAND; }
+  "\\remove"                { return REMOVE_COMMAND; }
+  "\\accepts"               { return ACCEPTS_COMMAND; }
+  "\\defaultchild"          { return DEFAULTCHILD_COMMAND; }
+  "\\denies"                { return DENIES_COMMAND; }
+  "\\alias"                 { return ALIAS_COMMAND; }
+  "\\type"                  { return TYPE_COMMAND; }
+  "\\description"           { return DESCRIPTION_COMMAND; }
+  "\\name"                  { return NAME_COMMAND; }
+  "\\etc"                  { return ETC_COMMAND; }
+  "\\score"                  { return SCORE_COMMAND; }
+  "\\book"                  { return BOOK_COMMAND; }
+  "\\bookpart"                  { return BOOKPART_COMMAND; }
+  "\\paper"                 { return PAPER_COMMAND; }
+  "\\midi"                  { return MIDI_COMMAND; }
+  "\\layout"                { return LAYOUT_COMMAND; }
+  "\\rest"                { return REST_COMMAND; }
+  "\\markuplist"                { return MARKUPLIST_COMMAND; }
+  "\\markup"                { return MARKUP_COMMAND; }
+  "\\score-lines"                { return SCORELINES_COMMAND; }
 //  "|"                    { return BAR; }
   "/"                    { return SLASH; }
   "\\"                   { return BACKSLASH; }
-//  ":"                    { return COLON; }
-//  "__"                   { return EXTENDER; }
-//  "_"                    { return UNDERSCORE; }
-//  "+"                    { return PLUS; }
-//  "--"                   { return HYPHEN; }
+  ":"                    { return COLON; }
+  "__"                   { return EXTENDER; }
+  "_"                    { return UNDERSCORE; }
+  "+"                    { return PLUS; }
+  "--"                   { return HYPHEN; }
   "-"                    { return MINUS; }
-//  "*"                    { return STAR; }
-//  "^"                    { return HAT; }
+  "*"                    { return STAR; }
+  "^"                    { return HAT; }
   "="                    { return EQUALS; }
   "."                    { return DOT; }
-//  ","                    { return COMMA; }
+  ","                    { return COMMA; }
   "'"                    { return SINGLE_QUOTE; }
 //  "~"                    { return TILDE; }
 //  "&"                    { return AMPERSAND; }
-//  "{"                    { return LEFT_BRACE; }
-//  "}"                    { return RIGHT_BRACE; }
-//  "["                    { return LEFT_BRACKET; }
-//  "]"                    { return RIGHT_BRACKET; }
-//  "?"                    { return QUESTION_MARK; }
-//  "!"                    { return EXCLAMATION_MARK; }
+  "{"                    { return LEFT_BRACE; }
+  "}"                    { return RIGHT_BRACE; }
+  "["                    { return LEFT_BRACKET; }
+  "]"                    { return RIGHT_BRACKET; }
+  "?"                    { return QUESTION_MARK; }
+  "!"                    { return EXCLAMATION_MARK; }
   "("                    { return LEFT_PAREN; }
   ")"                    { return RIGHT_PAREN; }
-//  "<<"                   { return MULTI_VOICE_START; }
-//  ">>"                   { return MULTI_VOICE_END; }
+  "<<"                   { return MULTI_VOICE_START; }
+  ">>"                   { return MULTI_VOICE_END; }
   // Tokenizer is greedy, so these should come after their double variant.
-//  "<"                    { return SMALLER; }
-//  ">"                    { return GREATER; }
+  "<"                    { return SMALLER; }
+  ">"                    { return GREATER; }
   "#}"                   { yypushState(SCHEME); schemeBracketsOpenStack.pop(); return SCM_CONTINUE; }
   "#"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START; }
   "$"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START_DOLLAR; }
