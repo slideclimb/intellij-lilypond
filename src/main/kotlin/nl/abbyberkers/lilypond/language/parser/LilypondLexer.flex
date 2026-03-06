@@ -78,7 +78,7 @@ SCM_LINE_COMMENT=;.*
   "\\lyricsto"           { return LYRICSTO_COMMAND; }
   "\\relative"           { return RELATIVE_COMMAND; }
   "\\repeat"           { return REPEAT_COMMAND; }
-  "\\alternative"           { return ALTERVATIVE_COMMAND; }
+  "\\alternative"           { return ALTERNATIVE_COMMAND; }
   "\\simultaneous"           { return SIMULTANEOUS_COMMAND; }
   "\\sequential"         { return SEQUENTIAL_COMMAND; }
   "\\tempo"              { return TEMPO_COMMAND; }

@@ -67,7 +67,7 @@ music_bare ::= mode_changed_music
              | grouped_music_list
              | relative_music
 
-relative_music ::= RELATIVE_COMMAND pitch? braced_music_list
+relative_music ::= RELATIVE_COMMAND pitch? composite_music
 
 grouped_music_list ::= simultaneous_music
                      | sequential_music
@@ -75,7 +75,7 @@ grouped_music_list ::= simultaneous_music
 repeated_music ::= REPEAT_COMMAND simple_string unsigned_integer music
                  | REPEAT_COMMAND simple_string unsigned_integer music alternative_music
 
-alternative_music ::= ALTERVATIVE_COMMAND basic_music
+alternative_music ::= ALTERNATIVE_COMMAND basic_music
 
 simultaneous_music ::= SIMULTANEOUS_COMMAND braced_music_list
                      | MULTI_VOICE_START music_list MULTI_VOICE_END
