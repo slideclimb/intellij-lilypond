@@ -113,7 +113,8 @@ SCM_LINE_COMMENT=;.*
   "\\markuplist"                { return MARKUPLIST_COMMAND; }
   "\\markup"                { return MARKUP_COMMAND; }
   "\\score-lines"                { return SCORELINES_COMMAND; }
-//  "|"                    { return BAR; }
+  "\\include"            { return INCLUDE_COMMAND; }
+  "|"                    { return BAR; }
   "/"                    { return SLASH; }
   "\\"                   { return BACKSLASH; }
   ":"                    { return COLON; }

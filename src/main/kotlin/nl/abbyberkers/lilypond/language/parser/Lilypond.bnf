@@ -36,11 +36,14 @@ private toplevel_expression ::= version
                       | SCM_START /*SCM_TOKEN*/
                       | scheme_expression /*embedded_scm_active*/
                       | output_def
+                      | include
                       | command
 
 version ::= VERSION_COMMAND string_lit
 
 command ::= BACKSLASH SYMBOL
+
+include ::= INCLUDE_COMMAND string_lit
 
 basic_music ::= scheme_expression /* music_function_call */
               | repeated_music
@@ -49,7 +52,8 @@ basic_music ::= scheme_expression /* music_function_call */
               | LYRICSTO_COMMAND simple_string lyric_mode_music
               | LYRICSTO_COMMAND simple_string EQUALS simple_string lyric_mode_music
 
-contextable_music ::= basic_music
+contextable_music ::= BAR
+                    | basic_music
                     | pitch_as_music
                     | event_chord
 
@@ -62,9 +66,8 @@ music_bare ::= mode_changed_music
              | scheme_identifier_lily /*MUSIC_IDENTIFIER*/
              | grouped_music_list
              | relative_music
-             | command
 
-relative_music ::= RELATIVE_COMMAND pitch braced_music_list
+relative_music ::= RELATIVE_COMMAND pitch? braced_music_list
 
 grouped_music_list ::= simultaneous_music
                      | sequential_music
@@ -95,7 +98,8 @@ braced_music_list ::= LEFT_BRACE music_list RIGHT_BRACE
 // TODO (music_embedded | error)* parser recovery?
 music_list ::= (music_embedded)*
 
-music ::= music_assign
+music ::= BAR
+        | music_assign
         | pitch_as_music
         | lyric_element_music
 
@@ -332,7 +336,7 @@ bookpart_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
 
 paper_block ::= output_def
 
-output_def ::= output_def_body RIGHT_BRACE
+output_def ::= output_def_body
 
 output_def_head ::= PAPER_COMMAND
                   | MIDI_COMMAND
@@ -367,20 +371,20 @@ octave_check ::= EQUALS quotes
 
 slur ::= LEFT_PAREN | RIGHT_PAREN
 
-quotes ::= (sub_quotes | sup_quotes)?
+quotes ::= sub_quotes | sup_quotes
 
-erroneous_quotes ::= quotes
+erroneous_quotes ::= quotes?
 
 sup_quotes ::= SINGLE_QUOTE+
 
 sub_quotes ::= COMMA+
 
-steno_pitch ::= SYMBOL /*NOTENAME_PITCH*/ quotes
+steno_pitch ::= SYMBOL /*NOTENAME_PITCH*/ quotes*
 
-steno_tonic_pitch ::= SYMBOL /*TONICNAME_PITCH*/ quotes
+steno_tonic_pitch ::= SYMBOL /*TONICNAME_PITCH*/ quotes*
 
 pitch ::= steno_pitch
-        | (scheme_identifier_lily | command) /*PITCH_IDENTIFIER*/ quotes
+        | (scheme_identifier_lily | command) /*PITCH_IDENTIFIER*/ quotes*
 
 pitch_or_tonic_pitch ::= pitch
                        | steno_tonic_pitch
@@ -445,9 +449,7 @@ br_bass_figure ::= bass_figure
 
 figure_list ::= br_bass_figure*
 
-optional_rest ::= REST_COMMAND?
-
-pitch_or_music ::= pitch exclamations questions octave_check? duration? erroneous_quotes slur? optional_rest post_events
+pitch_or_music ::= pitch exclamations questions octave_check? duration? erroneous_quotes slur? REST_COMMAND? post_events
                  | new_chord post_events
 
 simple_element ::= DRUM_PITCH optional_notemode_duration
