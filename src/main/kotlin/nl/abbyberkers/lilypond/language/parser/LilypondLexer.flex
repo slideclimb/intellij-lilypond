@@ -64,6 +64,8 @@ SCM_LINE_COMMENT=;.*
 <YYINITIAL> {
   "\""                   { yypushState(STRING); return QUOTE; }
   "\\+"                  { return ESCAPED_PLUS; }
+  "\\<" | "\\cr" | "\\>" | "\\decr"       { return CRESCENDO_START; }
+  "\\!" | "\\endcr" | "\\enddecr"      { return CRESCENDO_END; }
   "\\!"                  { return ESCAPED_EXCLAMATION; }
   "\\\\"                 { return ESCAPED_BACKSLASH; }
   "\\version"            { return VERSION_COMMAND; }

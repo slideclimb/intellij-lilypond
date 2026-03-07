@@ -361,11 +361,15 @@ post_events ::= post_event*
 direction_less_event ::= string_number_event
                        | scheme_identifier_lily /*EVENT_IDENTIFIER*/
                        | tremolo_type
+                       | crescendo
                        | scheme_expression /*event_function_event*/
                        | command
 
-direction_reqd_event ::= gen_text_def
+direction_reqd_event ::= crescendo
+                       | gen_text_def
                        | script_abbreviation
+
+crescendo ::= CRESCENDO_START | CRESCENDO_END
 
 octave_check ::= EQUALS quotes
 
@@ -412,12 +416,10 @@ script_dir ::= UNDERSCORE
 
 optional_notemode_duration ::= duration?
 
-steno_duration ::= unsigned dots
-                 | (scheme_identifier_lily | command) /*DURATION_IDENTIFIER*/ dots
+steno_duration ::= (unsigned | scheme_identifier_lily | command) DOT*
+                 | DOT+
 
 duration ::= steno_duration multipliers
-
-dots ::= DOT*
 
 multiplier_scm ::= scheme_identifier_lily /*NUMBER_IDENTIFIER*/
                  | command
@@ -535,8 +537,7 @@ markup_list ::= markup_composed_list
               | markup_uncomposed_list
 
 markup_uncomposed_list ::= markup_braced_list
-                         | markup_command_list
-                         | scheme_expression scheme_identifier_lily /* markup_scm MARKUPLIST_IDENTIFIER*/
+                         | scheme_expression scheme_identifier_lily? /* markup_scm MARKUPLIST_IDENTIFIER*/
                          | SCORELINES_COMMAND LEFT_BRACE score_body RIGHT_BRACE
 
 markup_composed_list ::= markup_head_1_list markup_uncomposed_list
@@ -545,17 +546,14 @@ markup_braced_list ::= LEFT_BRACE markup_braced_list_body RIGHT_BRACE
 
 markup_braced_list_body ::= (markup | markup_list)*
 
-markup_command_list ::= scheme_expression /*MARKUP_LIST_FUNCTION markup_command_list_arguments*/
-
-markup_head_1_item ::= scheme_expression /*MARKUP_FUNCTION "markup?" markup_command_list_arguments*/
-
-markup_head_1_list ::= markup_head_1_item+
+markup_head_1_list ::= scheme_expression+
 
 simple_markup ::= markup_word
                 | simple_markup_noword
 
 simple_markup_noword ::= SCORE_COMMAND LEFT_BRACE score_body RIGHT_BRACE
                        | scheme_expression (scheme_identifier_lily | command)? /* MARKUP_FUNCTION markup_command_basic_arguments | markup_scm MARKUP_IDENTIFIER*/
+                       | command
 
 markup ::= markup_head_1_list simple_markup
          | simple_markup
