@@ -46,6 +46,7 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
 
 WHITE_SPACE=\s+
 
+COMMAND=\\[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
 SYMBOL=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
 DIGIT=[0-9]
 WHITESPACE=[ \t\n\x0B\f\r]+
@@ -112,10 +113,11 @@ SCM_LINE_COMMENT=;.*
   "\\midi"                  { return MIDI_COMMAND; }
   "\\layout"                { return LAYOUT_COMMAND; }
   "\\rest"                { return REST_COMMAND; }
-  "\\markuplist"                { return MARKUPLIST_COMMAND; }
-  "\\markup"                { return MARKUP_COMMAND; }
+//  "\\markuplist"                { return MARKUPLIST_COMMAND; }
+//  "\\markup"                { return MARKUP_COMMAND; }
   "\\score-lines"                { return SCORELINES_COMMAND; }
   "\\include"            { return INCLUDE_COMMAND; }
+  {COMMAND}              { return COMMAND; }
   "|"                    { return BAR; }
   "/"                    { return SLASH; }
   "\\"                   { return BACKSLASH; }

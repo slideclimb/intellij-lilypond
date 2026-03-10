@@ -34,15 +34,12 @@ private toplevel_expression ::= version
                       | composite_music
                       | full_markup
                       | full_markup_list
-                      | SCM_START /*SCM_TOKEN*/
                       | output_def
                       | include
-                      | command
+                      | COMMAND
                       | string_lit
 
 version ::= VERSION_COMMAND string_lit
-
-command ::= BACKSLASH SYMBOL
 
 include ::= INCLUDE_COMMAND string_lit
 
@@ -118,7 +115,7 @@ optional_id ::= (EQUALS simple_string)?
 
 lyric_mode_music ::= grouped_music_list
                    | scheme_identifier_lily /*MUSIC_IDENTIFIER*/
-                   | command
+                   | COMMAND
 
 mode_changed_music ::= mode_changing_head grouped_music_list
                      | mode_changing_head_with_context optional_context_mods grouped_music_list
@@ -158,7 +155,7 @@ context_mod_list ::= (context_mod | context_mod_arg)*
 
 context_mod_arg ::= scheme_expression /*embedded_scm*/
                   | composite_music
-                  | command
+                  | COMMAND
 
 context_def_mod ::= CONSISTS_COMMAND
                   | REMOVE_COMMAND
@@ -211,7 +208,7 @@ scalar ::= scheme_expression
          | str
          | symbol_list_part_bare DOT property_path
          | symbol_list_part_bare COMMA property_path
-         | command
+         | COMMAND
 
 event_chord ::= simple_element post_events
               | CHORD_REPETITION optional_notemode_duration post_events
@@ -245,14 +242,14 @@ post_event_nofinger ::= direction_less_event
 
 header_block ::= HEADER_COMMAND LEFT_BRACE header_block_body RIGHT_BRACE
 
-header_block_body ::= (assignment | scheme_expression | SCM_START)*
+header_block_body ::= (assignment | scheme_expression)*
 
 assignment ::= property_assignment
              | markup_assignment
 
 property_assignment ::= assignment_id (DOT property_path)? EQUALS identifier_init {pin=3}
 
-markup_assignment ::= markup_mode_word EQUALS identifier_init {pin=2}
+markup_assignment ::= MARKUP_COMMAND markup_word EQUALS identifier_init {pin=3}
 
 assignment_id ::= string_lit | SYMBOL
 
@@ -273,8 +270,7 @@ identifier_init_nonumber ::= header_block
                            | fraction
                            | string_lit
                            | scheme_expression /*embedded_scm*/
-                           | partial_markup
-                           | full_markup_list
+                           | full_markup
                            | context_modification
                            | partial_function ETC_COMMAND
 
@@ -283,7 +279,7 @@ partial_function ::= ( OVERRIDE_COMMAND grob_prop_path EQUALS
                      | REPEAT_COMMAND simple_string unsigned_integer
                      | REPEAT_COMMAND simple_string
                      )*
-                     (scheme_expression | script_dir markup_mode? scheme_expression?)
+                     (scheme_expression | script_dir MARKUP_COMMAND? scheme_expression?)
 
 property_path ::= symbol_list_rev
 
@@ -310,14 +306,13 @@ score_items ::= score_item* header_block?
 
 book_block ::= BOOK_COMMAND LEFT_BRACE book_body RIGHT_BRACE
 
-book_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
+book_body ::= (scheme_identifier_lily | COMMAND)? /*BOOK_IDENTIFIER*/ (
               paper_block
             | bookpart_block
             | score_block
             | composite_music
             | full_markup
             | full_markup_list
-            | SCM_START /*SCM_TOKEN*/
             | scheme_expression /*embedded_scm_active*/
             | header_block
 //            TODO parser recovery?
@@ -326,13 +321,12 @@ book_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
 
 bookpart_block ::= BOOKPART_COMMAND LEFT_BRACE bookpart_body RIGHT_BRACE
 
-bookpart_body ::= (scheme_identifier_lily | command)? /*BOOK_IDENTIFIER*/ (
+bookpart_body ::= (scheme_identifier_lily | COMMAND)? /*BOOK_IDENTIFIER*/ (
                   paper_block
                 | score_block
                 | composite_music
                 | full_markup
                 | full_markup_list
-                | SCM_START /*SCM_TOKEN*/
                 | scheme_expression /*embedded_scm_active*/
                 | header_block
 //                TODO parser recovery?
@@ -352,7 +346,6 @@ output_def_head_with_mode_switch ::= output_def_head
 output_def_body ::= output_def_head_with_mode_switch LEFT_BRACE
                   ( assignment
                   | scheme_expression /*embedded_scm_active*/
-                  | SCM_START
                   | music_or_context_def
 //                  TODO parser recovery?
 //                  | error
@@ -368,7 +361,7 @@ direction_less_event ::= string_number_event
                        | tremolo_type
                        | crescendo
                        | scheme_expression /*event_function_event*/
-                       | command
+                       | COMMAND
 
 direction_reqd_event ::= crescendo
                        | gen_text_def
@@ -393,7 +386,7 @@ steno_pitch ::= SYMBOL /*NOTENAME_PITCH*/ quotes*
 steno_tonic_pitch ::= SYMBOL /*TONICNAME_PITCH*/ quotes*
 
 pitch ::= steno_pitch
-        | (scheme_identifier_lily | command) /*PITCH_IDENTIFIER*/ quotes*
+        | (scheme_identifier_lily | COMMAND) /*PITCH_IDENTIFIER*/ quotes*
 
 pitch_or_tonic_pitch ::= pitch
                        | steno_tonic_pitch
@@ -419,15 +412,15 @@ script_dir ::= UNDERSCORE
              | HAT
              | MINUS
 
-optional_notemode_duration ::= duration?
+optional_notemode_duration ::= exclamations? questions? octave_check? slur?
 
-steno_duration ::= (unsigned | scheme_identifier_lily | command) DOT*
+steno_duration ::= (unsigned | scheme_identifier_lily | COMMAND) DOT*
                  | DOT+
 
 duration ::= steno_duration multipliers
 
 multiplier_scm ::= scheme_identifier_lily /*NUMBER_IDENTIFIER*/
-                 | command
+                 | COMMAND
                  | scheme_expression /*embedded_scm_bare*/
 
 multipliers ::= (STAR (unsigned | fraction | multiplier_scm))*
@@ -514,54 +507,80 @@ number_term ::= number_factor
 number_factor ::= MINUS* bare_number
 
 bare_number ::= bare_number_common
-              | unsigned (scheme_identifier_lily | command)?
+              | unsigned (scheme_identifier_lily | COMMAND)?
 
 bare_number_common ::= real
-                     | (scheme_identifier_lily | command)
-                     | real (scheme_identifier_lily | command)
+                     | (scheme_identifier_lily | COMMAND)
+                     | real (scheme_identifier_lily | COMMAND)
 
-partial_markup ::= markup_mode scheme_expression /*markup_partial_function*/ ETC_COMMAND
+// partial_markup | full_markup | full_markup_list
+any_markup ::= MARKUP_COMMAND ( scheme_expression ETC_COMMAND
+                              | markup_top
+                              | markup_word
+                              )
 
-full_markup ::= markup_mode markup_top
-              | markup_mode_word
+partial_markup ::= MARKUP_COMMAND scheme_expression /*markup_partial_function*/ ETC_COMMAND
+
+full_markup ::= MARKUP_COMMAND markup_list
 
 full_markup_list ::= MARKUPLIST_COMMAND markup_list
 
-markup_mode ::= MARKUP_COMMAND
-
-markup_mode_word ::= markup_mode markup_word
-
-markup_word ::= string_lit
-              | SYMBOL
+markup_word ::= (string_lit | SYMBOL) DOT?
 
 markup_top ::= markup_list
              | markup_head_1_list simple_markup
              | simple_markup_noword
 
-markup_list ::= markup_composed_list
-              | markup_uncomposed_list
+markup_list ::= markup_content* (markup_content | braced_markup_list)
 
-markup_uncomposed_list ::= markup_braced_list
+braced_markup_list ::= LEFT_BRACE markup_content* RIGHT_BRACE {pin=3}
+
+markup_uncomposed_list ::= LEFT_BRACE (markup_head_1_list? (simple_markup | markup_uncomposed_list))* RIGHT_BRACE
                          | scheme_expression scheme_identifier_lily? /* markup_scm MARKUPLIST_IDENTIFIER*/
                          | SCORELINES_COMMAND LEFT_BRACE score_body RIGHT_BRACE
 
-markup_composed_list ::= markup_head_1_list markup_uncomposed_list
+markup_head_1_list ::= (COMMAND | scheme_expression)+
 
-markup_braced_list ::= LEFT_BRACE markup_braced_list_body RIGHT_BRACE
-
-markup_braced_list_body ::= (markup | markup_list)*
-
-markup_head_1_list ::= scheme_expression+
+markup_content ::= COMMAND
+                 | scheme_expression
+                 | markup_word
+                 | (SCORE_COMMAND | SCORELINES_COMMAND) LEFT_BRACE score_body RIGHT_BRACE
 
 simple_markup ::= markup_word
                 | simple_markup_noword
 
 simple_markup_noword ::= SCORE_COMMAND LEFT_BRACE score_body RIGHT_BRACE
-                       | scheme_expression (scheme_identifier_lily | command)? /* MARKUP_FUNCTION markup_command_basic_arguments | markup_scm MARKUP_IDENTIFIER*/
-                       | command
+                       | scheme_expression (scheme_identifier_lily | COMMAND)? /* MARKUP_FUNCTION markup_command_basic_arguments | markup_scm MARKUP_IDENTIFIER*/
+                       | COMMAND
 
-markup ::= markup_head_1_list simple_markup
-         | simple_markup
+//markup_top ::= markup_list
+//             | markup_head_1_list simple_markup
+//             | simple_markup_noword
+//
+//markup_list ::= markup_composed_list
+//              | markup_uncomposed_list
+//
+//markup_uncomposed_list ::= markup_braced_list
+//                         | scheme_expression scheme_identifier_lily? /* markup_scm MARKUPLIST_IDENTIFIER*/
+//                         | SCORELINES_COMMAND LEFT_BRACE score_body RIGHT_BRACE
+//
+//markup_composed_list ::= markup_head_1_list markup_uncomposed_list
+//
+//markup_braced_list ::= LEFT_BRACE markup_braced_list_body RIGHT_BRACE
+//
+//markup_braced_list_body ::= (markup | markup_list)*
+//
+//markup_head_1_list ::= (COMMAND | scheme_expression)+
+//
+//simple_markup ::= markup_word
+//                | simple_markup_noword
+//
+//simple_markup_noword ::= SCORE_COMMAND LEFT_BRACE score_body RIGHT_BRACE
+//                       | scheme_expression (scheme_identifier_lily | COMMAND)? /* MARKUP_FUNCTION markup_command_basic_arguments | markup_scm MARKUP_IDENTIFIER*/
+//                       | COMMAND
+//
+//markup ::= markup_head_1_list simple_markup
+//         | simple_markup
 
 // old lilypond
 //base_expression ::= expression | braced_expression | scheme_expression
@@ -615,7 +634,7 @@ scheme_start ::= SCM_START | SCM_START_DOLLAR
 
 scheme_expression_internal ::= scm_function | scm_unit | SCM_BLOCK_COMMENT | SCM_LINE_COMMENT | scm_lily
 
-scheme_identifier_lily ::= scheme_start | SCM_IDENTIFIER
+scheme_identifier_lily ::= SCM_IDENTIFIER
 
 scm_function ::= SCM_BACKTICK? (SCM_VECTOR_OPEN | SCM_LEFT_PAREN) scheme_expression_internal* SCM_RIGHT_PAREN
 
