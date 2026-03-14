@@ -47,6 +47,7 @@ basic_music ::= scheme_expression /* music_function_call */
               | repeated_music
               | alternative_music
               | music_bare
+              | tweak* tempo_event
               | LYRICSTO_COMMAND simple_string lyric_mode_music
               | LYRICSTO_COMMAND simple_string EQUALS simple_string lyric_mode_music
 
@@ -391,7 +392,7 @@ pitch ::= steno_pitch
 pitch_or_tonic_pitch ::= pitch
                        | steno_tonic_pitch
 
-tweak ::= TWEAK_COMMAND grob_prop_path scheme_expression
+tweak ::= TWEAK_COMMAND grob_prop_path (scheme_expression | number_expression)
 
 gen_text_def ::= full_markup
                | string_lit
