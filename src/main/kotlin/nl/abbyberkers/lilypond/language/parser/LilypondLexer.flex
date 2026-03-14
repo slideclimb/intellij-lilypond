@@ -113,6 +113,7 @@ SCM_LINE_COMMENT=;.*
   "\\midi"                  { return MIDI_COMMAND; }
   "\\layout"                { return LAYOUT_COMMAND; }
   "\\rest"                { return REST_COMMAND; }
+  "\\tweak"               { return TWEAK_COMMAND; }
 //  "\\markuplist"                { return MARKUPLIST_COMMAND; }
 //  "\\markup"                { return MARKUP_COMMAND; }
   "\\score-lines"                { return SCORELINES_COMMAND; }

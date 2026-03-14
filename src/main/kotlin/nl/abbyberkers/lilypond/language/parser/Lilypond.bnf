@@ -223,7 +223,7 @@ chord_body ::= SMALLER chord_body_elements GREATER
 
 chord_body_elements ::= chord_body_element*
 
-chord_body_element ::= pitch_or_tonic_pitch exclamations? questions? octave_check? slur? post_events
+chord_body_element ::= tweak* pitch_or_tonic_pitch exclamations? questions? octave_check? slur? post_events
                      | DRUM_PITCH post_events
                      | scheme_expression /*music_function_call | MUSIC_IDENTIFIER | embedded_scm*/
                      | post_event
@@ -391,6 +391,8 @@ pitch ::= steno_pitch
 pitch_or_tonic_pitch ::= pitch
                        | steno_tonic_pitch
 
+tweak ::= TWEAK_COMMAND grob_prop_path scheme_expression
+
 gen_text_def ::= full_markup
                | string_lit
                | SYMBOL
@@ -449,7 +451,7 @@ br_bass_figure ::= bass_figure
 
 figure_list ::= br_bass_figure*
 
-pitch_or_music ::= pitch exclamations? questions? octave_check? duration? erroneous_quotes slur? REST_COMMAND? post_events
+pitch_or_music ::= tweak* pitch exclamations? questions? octave_check? duration? erroneous_quotes slur? REST_COMMAND? post_events
                  | new_chord post_events
 
 simple_element ::= DRUM_PITCH optional_notemode_duration
