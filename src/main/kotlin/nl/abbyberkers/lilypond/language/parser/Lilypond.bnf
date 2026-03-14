@@ -136,7 +136,7 @@ context_change ::= CHANGE_COMMAND simple_string EQUALS simple_string
 
 property_operation ::= simple_string EQUALS scalar
                      | UNSET_COMMAND simple_string
-                     | OVERRIDE_COMMAND property_path EQUALS scalar+
+                     | OVERRIDE_COMMAND property_path EQUALS scalar
                      | REVERT_COMMAND property_path
 
 context_prefix ::= CONTEXT_COMMAND str optional_id optional_context_mods
@@ -185,11 +185,9 @@ grob_prop_path ::= grob_prop_spec
 
 context_prop_spec ::= symbol_list_rev
 
-simple_revert_context ::= symbol_list_part
-
-music_property_def ::= OVERRIDE_COMMAND grob_prop_path EQUALS scalar+
-                     | REVERT_COMMAND simple_revert_context property_path
-                     | SET_COMMAND context_prop_spec EQUALS scalar+
+music_property_def ::= OVERRIDE_COMMAND grob_prop_path EQUALS scalar
+                     | REVERT_COMMAND grob_prop_path
+                     | SET_COMMAND context_prop_spec EQUALS scalar
                      | UNSET_COMMAND context_prop_spec
 
 str ::= string_lit
@@ -224,7 +222,7 @@ chord_body ::= SMALLER chord_body_elements GREATER
 
 chord_body_elements ::= chord_body_element*
 
-chord_body_element ::= tweak* pitch_or_tonic_pitch exclamations? questions? octave_check? slur? post_events
+chord_body_element ::= tweak* pitch_or_tonic_pitch exclamations? questions? octave_check? grouping_notes? post_events
                      | DRUM_PITCH post_events
                      | scheme_expression /*music_function_call | MUSIC_IDENTIFIER | embedded_scm*/
                      | post_event
@@ -273,7 +271,7 @@ identifier_init_nonumber ::= header_block
                            | scheme_expression /*embedded_scm*/
                            | full_markup
                            | context_modification
-                           | partial_function ETC_COMMAND
+                           | (partial_function | REVERT_COMMAND grob_prop_path) ETC_COMMAND
 
 partial_function ::= ( OVERRIDE_COMMAND grob_prop_path EQUALS
                      | SET_COMMAND context_prop_spec EQUALS
@@ -372,7 +370,11 @@ crescendo ::= CRESCENDO_START | CRESCENDO_END
 
 octave_check ::= EQUALS quotes
 
+grouping_notes ::= slur | beam
+
 slur ::= LEFT_PAREN | RIGHT_PAREN
+
+beam ::= LEFT_BRACKET | RIGHT_BRACKET
 
 quotes ::= sub_quotes | sup_quotes
 
@@ -415,7 +417,7 @@ script_dir ::= UNDERSCORE
              | HAT
              | MINUS
 
-optional_notemode_duration ::= exclamations? questions? octave_check? slur?
+optional_notemode_duration ::= exclamations? questions? octave_check? grouping_notes?
 
 steno_duration ::= (unsigned | scheme_identifier_lily | COMMAND) DOT*
                  | DOT+
@@ -452,7 +454,7 @@ br_bass_figure ::= bass_figure
 
 figure_list ::= br_bass_figure*
 
-pitch_or_music ::= tweak* pitch exclamations? questions? octave_check? duration? erroneous_quotes slur? REST_COMMAND? post_events
+pitch_or_music ::= tweak* pitch exclamations? questions? octave_check? duration? erroneous_quotes grouping_notes? REST_COMMAND? post_events
                  | new_chord post_events
 
 simple_element ::= DRUM_PITCH optional_notemode_duration
