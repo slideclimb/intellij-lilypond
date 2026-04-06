@@ -37,6 +37,7 @@ private toplevel_expression ::= version
                       | output_def
                       | include
                       | COMMAND
+                      | SYMBOL
                       | string_lit
 
 version ::= VERSION_COMMAND string_lit
@@ -65,8 +66,11 @@ music_bare ::= mode_changed_music
              | scheme_identifier_lily /*MUSIC_IDENTIFIER*/
              | grouped_music_list
              | relative_music
+             | transposed_music
 
 relative_music ::= RELATIVE_COMMAND pitch? composite_music
+
+transposed_music ::= TRANSPOSE_COMMAND pitch pitch
 
 grouped_music_list ::= simultaneous_music
                      | sequential_music
@@ -77,7 +81,7 @@ repeated_music ::= REPEAT_COMMAND simple_string unsigned_integer music
 alternative_music ::= ALTERNATIVE_COMMAND basic_music
 
 simultaneous_music ::= SIMULTANEOUS_COMMAND braced_music_list
-                     | MULTI_VOICE_START music_list MULTI_VOICE_END
+                     | MULTI_VOICE_START music_list? MULTI_VOICE_END
 
 sequential_music ::= SEQUENTIAL_COMMAND braced_music_list
                    | braced_music_list
@@ -92,10 +96,10 @@ tempo_event ::= TEMPO_COMMAND steno_duration EQUALS tempo_range
 
 new_lyrics ::= (ADDLYRICS_COMMAND optional_context_mods lyric_mode_music)+
 
-braced_music_list ::= LEFT_BRACE music_list RIGHT_BRACE
+braced_music_list ::= LEFT_BRACE music_list? RIGHT_BRACE
 
 // TODO (music_embedded | error)* parser recovery?
-music_list ::= (music_embedded)*
+music_list ::= music_embedded (ESCAPED_BACKSLASH? music_embedded)*
 
 music ::= BAR
         | music_assign
@@ -170,7 +174,7 @@ context_def_mod ::= CONSISTS_COMMAND
 
 context_mod ::= property_operation
               | context_def_mod string_lit
-              | context_def_mod SYMBOL
+              | context_def_mod SYMBOL (MINUS SYMBOL)*
               | context_def_mod scheme_expression /*embedded_scm*/
 
 context_def_spec_block ::= CONTEXT_COMMAND LEFT_BRACE context_def_spec_body RIGHT_BRACE
@@ -191,23 +195,22 @@ music_property_def ::= OVERRIDE_COMMAND grob_prop_path EQUALS scalar
                      | UNSET_COMMAND context_prop_spec
 
 str ::= string_lit
-      | SYMBOL
+      | SYMBOL (MINUS SYMBOL)*
       | full_markup
 
 simple_string ::= string_lit
-                | SYMBOL
+                | SYMBOL (MINUS SYMBOL)*
                 | scheme_expression
 
 scalar ::= scheme_expression
          | music_assign
+         | COMMAND scalar?
          | pitch_or_music
          | scheme_identifier_lily
-         | bare_number
-         | MINUS bare_number
+         | MINUS? bare_number (COMMA bare_number)*
          | str
          | symbol_list_part_bare DOT property_path
          | symbol_list_part_bare COMMA property_path
-         | COMMAND
 
 event_chord ::= simple_element post_events
               | CHORD_REPETITION optional_notemode_duration post_events
@@ -250,7 +253,7 @@ property_assignment ::= assignment_id (DOT property_path)? EQUALS identifier_ini
 
 markup_assignment ::= MARKUP_COMMAND markup_word EQUALS identifier_init {pin=3}
 
-assignment_id ::= string_lit | SYMBOL
+assignment_id ::= string_lit | SYMBOL (MINUS SYMBOL)*
 
 identifier_init ::= identifier_init_nonumber
                   | number_expression
@@ -287,7 +290,7 @@ symbol_list_rev ::= symbol_list_part ((DOT | COMMA) symbol_list_part)*
 symbol_list_part ::= symbol_list_part_bare
                    | scheme_expression
 
-symbol_list_part_bare ::= SYMBOL
+symbol_list_part_bare ::= SYMBOL (MINUS SYMBOL)*
                         | symbol_list_element
 
 symbol_list_element ::= string_lit
@@ -370,6 +373,17 @@ crescendo ::= CRESCENDO_START | CRESCENDO_END
 
 octave_check ::= EQUALS quotes
 
+expressive_mark ::= MINUS (
+                      MINUS
+                    | HAT
+                    | PLUS
+                    | EXCLAMATION_MARK
+                    | GREATER
+                    | DOT
+                    | UNDERSCORE
+                  )
+                  | HYPHEN
+
 grouping_notes ::= slur | beam
 
 slur ::= LEFT_PAREN | RIGHT_PAREN
@@ -378,7 +392,7 @@ beam ::= LEFT_BRACKET | RIGHT_BRACKET
 
 quotes ::= sub_quotes | sup_quotes
 
-erroneous_quotes ::= quotes?
+erroneous_quotes ::= quotes
 
 sup_quotes ::= SINGLE_QUOTE+
 
@@ -398,7 +412,7 @@ tweak ::= TWEAK_COMMAND grob_prop_path (scheme_expression | number_expression)
 
 gen_text_def ::= full_markup
                | string_lit
-               | SYMBOL
+               | SYMBOL (MINUS SYMBOL)*
                | scheme_expression /*embedded_scm*/
 
 string_number_event ::= e_unsigned
@@ -417,7 +431,7 @@ script_dir ::= UNDERSCORE
              | HAT
              | MINUS
 
-optional_notemode_duration ::= exclamations? questions? octave_check? grouping_notes?
+optional_notemode_duration ::= exclamations? questions? octave_check? duration? expressive_mark? grouping_notes?
 
 steno_duration ::= (unsigned | scheme_identifier_lily | COMMAND) DOT*
                  | DOT+
@@ -434,7 +448,7 @@ tremolo_type ::= COLON unsigned?
 
 bass_number ::= unsigned
               | string_lit
-              | SYMBOL
+              | SYMBOL (MINUS SYMBOL)*
               | full_markup
               | scheme_expression /*embedded_scm_bare*/
 
@@ -454,14 +468,14 @@ br_bass_figure ::= bass_figure
 
 figure_list ::= br_bass_figure*
 
-pitch_or_music ::= tweak* pitch exclamations? questions? octave_check? duration? erroneous_quotes grouping_notes? REST_COMMAND? post_events
+pitch_or_music ::= tweak* pitch exclamations? questions? octave_check? duration? erroneous_quotes? expressive_mark? grouping_notes? REST_COMMAND? post_events
                  | new_chord post_events
 
 simple_element ::= DRUM_PITCH optional_notemode_duration
                  | RESTNAME optional_notemode_duration
 
 lyric_element ::= full_markup
-                | SYMBOL
+                | SYMBOL (MINUS SYMBOL)*
                 | string_lit
                 | scheme_expression /*LYRIC_ELEMENT*/
 
@@ -493,7 +507,7 @@ exclamations ::= EXCLAMATION_MARK+
 
 questions ::= QUESTION_MARK+
 
-unsigned ::= digit+
+unsigned ::= DIGITS
 
 e_unsigned ::= BACKSLASH unsigned
 
@@ -501,9 +515,9 @@ fraction ::= unsigned SLASH unsigned
 
 int ::= MINUS? unsigned
 
-real ::= int DOT digit+
+real ::= int DOT DIGITS
 
-number_expression ::= number_term ((PLUS | MINUS) number_term)*
+number_expression ::= number_term ((PLUS | MINUS) number_term)* COMMAND?
 
 number_term ::= number_factor
               | number_factor STAR number_factor
@@ -530,7 +544,7 @@ full_markup ::= MARKUP_COMMAND markup_list
 
 full_markup_list ::= MARKUPLIST_COMMAND markup_list
 
-markup_word ::= (string_lit | SYMBOL) DOT?
+markup_word ::= (string_lit | SYMBOL (MINUS SYMBOL)*) DOT?
 
 markup_top ::= markup_list
              | markup_head_1_list simple_markup

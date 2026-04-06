@@ -47,10 +47,11 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
 WHITE_SPACE=\s+
 
 COMMAND=\\[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
-SYMBOL=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
-DIGIT=[0-9]
+SYMBOL=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#\-]+
+DIGITS=[0-9]+
 WHITESPACE=[ \t\n\x0B\f\r]+
-BLOCK_COMMENT=%\{(.|\n)*?%}
+BLOCK_COMMENT=%\{[^]*?%}
+//BLOCK_COMMENT=%\{(.|\n)*?%}
 LINE_COMMENT=%[^\r\n]*
 
 %xstates STRING SCHEME
@@ -67,7 +68,7 @@ SCM_LINE_COMMENT=;.*
   "\\+"                  { return ESCAPED_PLUS; }
   "\\<" | "\\cr" | "\\>" | "\\decr"       { return CRESCENDO_START; }
   "\\!" | "\\endcr" | "\\enddecr"      { return CRESCENDO_END; }
-  "\\!"                  { return ESCAPED_EXCLAMATION; }
+  //"\\!"                  { return ESCAPED_EXCLAMATION; }
   "\\\\"                 { return ESCAPED_BACKSLASH; }
   "\\version"            { return VERSION_COMMAND; }
   "\\new"                { return NEW_COMMAND; }
@@ -80,6 +81,7 @@ SCM_LINE_COMMENT=;.*
   "\\lyrics"             { return LYRICSS_COMMAND; }
   "\\lyricsto"           { return LYRICSTO_COMMAND; }
   "\\relative"           { return RELATIVE_COMMAND; }
+  "\\transpose"           { return TRANSPOSE_COMMAND; }
   "\\repeat"           { return REPEAT_COMMAND; }
   "\\alternative"           { return ALTERNATIVE_COMMAND; }
   "\\simultaneous"           { return SIMULTANEOUS_COMMAND; }
@@ -153,7 +155,7 @@ SCM_LINE_COMMENT=;.*
   "#"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START; }
   "$"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START_DOLLAR; }
 
-  {DIGIT}                { return DIGIT; }
+  {DIGITS}               { return DIGITS; }
   {WHITESPACE}           { return WHITE_SPACE; }
   {BLOCK_COMMENT}        { return BLOCK_COMMENT; }
   {LINE_COMMENT}         { return LINE_COMMENT; }
@@ -217,7 +219,7 @@ SCM_LINE_COMMENT=;.*
   ">"                    { return SCM_GREATER; }
   "`"                    { return SCM_BACKTICK; }
 //  "}"                    { yypopState(); return LEFT_BRACE; }
-  {DIGIT}                { return SCM_DIGIT; }
+  {DIGITS}                { return SCM_DIGIT; }
   {SCM_IDENTIFIER}       { return SCM_IDENTIFIER; }
   {SCM_BLOCK_COMMENT}        { return SCM_BLOCK_COMMENT; }
   {SCM_LINE_COMMENT}         { return SCM_LINE_COMMENT; }
