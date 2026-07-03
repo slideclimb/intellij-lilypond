@@ -5,7 +5,6 @@ import com.intellij.psi.tree.IElementType;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.List;
 
 import static com.intellij.psi.TokenType.BAD_CHARACTER;
 import static com.intellij.psi.TokenType.WHITE_SPACE;
@@ -18,9 +17,16 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
     this((java.io.Reader)null);
   }
 
-  private Deque<Integer> stack = new ArrayDeque<>();
+  // Saved lexer states, so we can nest LilyPond inside Scheme (#{ ... #}) and
+  // Scheme inside LilyPond (#, $) arbitrarily. Language injection cannot express
+  // this mutual nesting, so the state machine is hand-rolled.
+  private final Deque<Integer> stack = new ArrayDeque<>();
 
-  private Deque<Integer> schemeBracketsOpenStack = new ArrayDeque<>();
+  // For each #/$ scheme region still open, the paren depth that was in effect when
+  // it started. A region ends once the depth returns to that captured baseline.
+  private final Deque<Integer> schemeBracketsOpenStack = new ArrayDeque<>();
+
+  private int schemeBracketsOpen = 0;
 
   public void yypushState(int newState) {
     stack.push(yystate());
@@ -28,13 +34,15 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
   }
 
   public void yypopState() {
-    yybegin(stack.pop());
+    yybegin(stack.isEmpty() ? YYINITIAL : stack.pop());
   }
 
-  private int schemeBracketsOpen = 0;
-
-  private int lastSchemeBracketsOpen = 0;
-
+  // True when the current paren depth has returned to the baseline captured when the
+  // most recent #/$ scheme region was entered, i.e. that region is now complete.
+  private boolean schemeRegionComplete() {
+    return !schemeBracketsOpenStack.isEmpty()
+        && schemeBracketsOpen == schemeBracketsOpenStack.peek();
+  }
 %}
 
 %public
@@ -44,25 +52,49 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
 %type IElementType
 %unicode
 
-WHITE_SPACE=\s+
-
-WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
+WS=\s+
 DIGIT=[0-9]
-WHITESPACE=[ \t\n\x0B\f\r]+
-BLOCK_COMMENT=%\{(.|\n)*?%}
-LINE_COMMENT=%[^\r\n]*
 
-%xstates STRING SCHEME
+// A LilyPond command/identifier reference: a backslash followed by letters. Command
+// names contain no digits, so a lone backslash (\\, \!, ...) falls through to BACKSLASH.
+COMMAND_TOKEN=\\[a-zA-Z]+
+
+// A whole string literal, including \" and \\ escapes; may span newlines.
+STRING_LITERAL=\"([^\"\\]|\\[^])*\"
+
+// A bare run of "word" characters (note names, durations, etc.). Excludes every char
+// that carries its own token. Unchanged from the original lexer to preserve tokenization.
+WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
+
+BLOCK_COMMENT=%\{[^]*?%\}
+LINE_COMMENT=%[^\r\n]*
 
 SCM_IDENTIFIER=[a-zA-Z\-_:$[\xc0-\xf6\xf8-\xff]]+
 SCM_BLOCK_COMMENT=#\!\{[^(\!#)]\!#
 SCM_LINE_COMMENT=;.*
 
+%xstates SCHEME
 
 %%
 
 <YYINITIAL> {
-  "\""                   { yypushState(STRING); return QUOTE; }
+  {STRING_LITERAL}       { return STRING_LITERAL; }
+  {COMMAND_TOKEN}        { return COMMAND_TOKEN; }
+
+  "<<"                   { return MULTI_VOICE_START; }
+  ">>"                   { return MULTI_VOICE_END; }
+  // Tokenizer is greedy, so these should come after their double variant.
+  "<"                    { return SMALLER; }
+  ">"                    { return GREATER; }
+
+  "#}"                   {
+          yypushState(SCHEME);
+          if (!schemeBracketsOpenStack.isEmpty()) schemeBracketsOpenStack.pop();
+          return SCM_CONTINUE;
+      }
+  "#"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START; }
+  "$"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START_DOLLAR; }
+
   "|"                    { return BAR; }
   "/"                    { return SLASH; }
   "\\"                   { return BACKSLASH; }
@@ -86,47 +118,24 @@ SCM_LINE_COMMENT=;.*
   "!"                    { return EXCLAMATION_MARK; }
   "("                    { return LEFT_PAREN; }
   ")"                    { return RIGHT_PAREN; }
-  "<<"                   { return MULTI_VOICE_START; }
-  ">>"                   { return MULTI_VOICE_END; }
-  // Tokenizer is greedy, so these should come after their double variant.
-  "<"                    { return SMALLER; }
-  ">"                    { return GREATER; }
-  "#}"                   { yypushState(SCHEME); schemeBracketsOpenStack.pop(); return SCM_CONTINUE; }
-  "#"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START; }
-  "$"                    { yypushState(SCHEME); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_START_DOLLAR; }
 
   {DIGIT}                { return DIGIT; }
-  {WHITESPACE}           { return WHITE_SPACE; }
+  {WS}                   { return WHITE_SPACE; }
   {BLOCK_COMMENT}        { return BLOCK_COMMENT; }
   {LINE_COMMENT}         { return LINE_COMMENT; }
   {WORD}                 { return WORD; }
-
-}
-
-<STRING> {
-  {WHITE_SPACE} { return WHITE_SPACE; }
-  "\\\""    { return ESCAPED_QUOTE; }
-  "\\\\" { return ESCAPED_BACKSLASH; }
-  "\"" { yypopState(); return QUOTE; }
-  [^] { return STRING_LITERAL_CHAR; }
 }
 
 <SCHEME> {
-  {WHITE_SPACE}          {
-          if (schemeBracketsOpen == schemeBracketsOpenStack.peek()) {
-              yypopState();
-              schemeBracketsOpenStack.pop();
-          }
+  {WS} {
+          if (schemeRegionComplete()) { schemeBracketsOpenStack.pop(); yypopState(); }
           return WHITE_SPACE;
-  }
-  "\\"                   {
-          if (schemeBracketsOpen == schemeBracketsOpenStack.peek()) {
-              yypopState();
-              schemeBracketsOpenStack.pop();
-          }
+      }
+  "\\" {
+          if (schemeRegionComplete()) { schemeBracketsOpenStack.pop(); yypopState(); }
           return BACKSLASH;
       }
-  "\""                   { yypushState(STRING); return QUOTE; }
+  {STRING_LITERAL}       { return STRING_LITERAL; }
   "/"                    { return SCM_SLASH; }
   "="                    { return SCM_EQUALS; }
   "+"                    { return SCM_PLUS; }
@@ -140,17 +149,13 @@ SCM_LINE_COMMENT=;.*
   "("                    { schemeBracketsOpen++; return SCM_LEFT_PAREN; }
   ")"                    {
           schemeBracketsOpen--;
-          if (schemeBracketsOpen == schemeBracketsOpenStack.peek()) {
-              yypopState();
-              schemeBracketsOpenStack.pop();
-          }
+          if (schemeRegionComplete()) { schemeBracketsOpenStack.pop(); yypopState(); }
           return SCM_RIGHT_PAREN;
       }
 
   "#t"                   { return SCM_TRUE; }
   "#f"                   { return SCM_FALSE; }
   "#("                   { schemeBracketsOpen++; return SCM_VECTOR_OPEN; }
-
   "#{"                   { yypopState(); schemeBracketsOpenStack.push(schemeBracketsOpen); return SCM_LILY_START; }
   "#\\"                  { return SCM_CHAR_START; }
   "#"                    { return SCM_HASH; }
@@ -158,11 +163,19 @@ SCM_LINE_COMMENT=;.*
   "<"                    { return SCM_SMALLER; }
   ">"                    { return SCM_GREATER; }
   "`"                    { return SCM_BACKTICK; }
-  "}"                    { yypopState(); return LEFT_BRACE; }
+  // A '}' inside Scheme closes the enclosing LilyPond block: end the scheme region and
+  // re-lex the brace in the outer state so it becomes a RIGHT_BRACE with correct offsets.
+  "}"                    {
+          if (!schemeBracketsOpenStack.isEmpty()) schemeBracketsOpenStack.pop();
+          yypushback(1);
+          yypopState();
+      }
   {DIGIT}                { return SCM_DIGIT; }
   {SCM_IDENTIFIER}       { return SCM_IDENTIFIER; }
-  {SCM_BLOCK_COMMENT}        { return SCM_BLOCK_COMMENT; }
-  {SCM_LINE_COMMENT}         { return SCM_LINE_COMMENT; }
+  {SCM_BLOCK_COMMENT}    { return SCM_BLOCK_COMMENT; }
+  {SCM_LINE_COMMENT}     { return SCM_LINE_COMMENT; }
+  // Total fallback so no input can ever wedge the lexer inside the Scheme state.
+  [^]                    { return BAD_CHARACTER; }
 }
 
 [^] { return BAD_CHARACTER; }

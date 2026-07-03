@@ -48,7 +48,10 @@ val langPkg = "nl/abbyberkers/lilypond/language"
 tasks.named<GenerateLexerTask>("generateLexer") {
     sourceFile.set(file("src/main/kotlin/$langPkg/parser/LilypondLexer.flex"))
     targetOutputDir.set(file("src/main/gen/$langPkg/parser"))
-    purgeOldFiles.set(true)
+    // Must stay false: the lexer shares the parser/ package dir with the generated
+    // parser, and purge here wipes the whole dir (clobbering LilypondParser.java when
+    // both tasks run). The parser task's own purge is scoped to psi/ + the parser file.
+    purgeOldFiles.set(false)
 }
 
 tasks.named<GenerateParserTask>("generateParser") {

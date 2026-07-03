@@ -14,6 +14,7 @@
 
   tokens = [
     BACKSLASH='\'
+    COMMAND_TOKEN="regexp:\\[a-zA-Z]+"
     DIGIT="regexp:\d"
     DOT="."
     COMMA=","
@@ -49,7 +50,7 @@
     SCM_LILY_START="#{"
     SCM_START_DOLLAR="$"
 
-    STRING_LITERAL="regexp:\"[^\"]*\""
+    STRING_LITERAL="regexp:\"([^\"\\]|\\.)*\""
     WHITESPACE="regexp:\s+"
     BLOCK_COMMENT="regexp:%\{(.|\n)*%}"
     LINE_COMMENT="regexp:%[^{].*"
@@ -68,7 +69,7 @@ lilypondFile ::= (base_expression | BLOCK_COMMENT | LINE_COMMENT)*
 
 base_expression ::= expression | braced_expression | scheme_expression
 
-command ::= BACKSLASH WORD
+command ::= COMMAND_TOKEN
 
 braced_expression ::= LEFT_BRACE unit* RIGHT_BRACE {pin=3}
 
@@ -106,7 +107,7 @@ unit ::= command
   | string_lit
   | WORD
 
-string_lit ::= QUOTE (STRING_LITERAL_CHAR | ESCAPED_QUOTE | ESCAPED_BACKSLASH)* QUOTE
+string_lit ::= STRING_LITERAL
 
 // TODO implement https://www.scheme.com/tspl2d/grammar.html
 // Scheme parser has to be implemented here. Language injection is not possible because of nesting (LilyPond in Scheme and vice versa)
