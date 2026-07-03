@@ -1,10 +1,13 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.grammarkit.tasks.GenerateLexerTask
+import org.jetbrains.grammarkit.tasks.GenerateParserTask
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     id("java") // Java support
     alias(libs.plugins.kotlin) // Kotlin support
+    alias(libs.plugins.grammarkit) // GrammarKit: generate lexer (JFlex) and parser/PSI from .flex/.bnf
     alias(libs.plugins.intelliJPlatform) // IntelliJ Platform Gradle Plugin
     alias(libs.plugins.changelog) // Gradle Changelog Plugin
     alias(libs.plugins.qodana) // Gradle Qodana Plugin
@@ -36,6 +39,29 @@ sourceSets {
         }
     }
 }
+
+// Generate the LilyPond lexer/parser/PSI from the committed .flex/.bnf into src/main/gen.
+// src/main/gen is gitignored: it is a reproducible build product, regenerated here so it can
+// never drift from the sources the way a manually IDE-generated tree does.
+val langPkg = "nl/abbyberkers/lilypond/language"
+
+tasks.named<GenerateLexerTask>("generateLexer") {
+    sourceFile.set(file("src/main/kotlin/$langPkg/parser/LilypondLexer.flex"))
+    targetOutputDir.set(file("src/main/gen/$langPkg/parser"))
+    purgeOldFiles.set(true)
+}
+
+tasks.named<GenerateParserTask>("generateParser") {
+    sourceFile.set(file("src/main/kotlin/$langPkg/parser/Lilypond.bnf"))
+    targetRootOutputDir.set(file("src/main/gen"))
+    pathToParser.set("/$langPkg/parser/LilypondParser.java")
+    pathToPsiRoot.set("/$langPkg/psi")
+    purgeOldFiles.set(true)
+}
+
+// Make compilation depend on generation so plain `./gradlew build` (and CI) always regenerates.
+tasks.named("compileKotlin") { dependsOn("generateLexer", "generateParser") }
+tasks.named("compileJava") { dependsOn("generateLexer", "generateParser") }
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/version_catalogs.html
 dependencies {
