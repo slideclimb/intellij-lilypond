@@ -5,6 +5,7 @@ import com.intellij.openapi.fileTypes.SyntaxHighlighter
 import com.intellij.openapi.options.colors.AttributesDescriptor
 import com.intellij.openapi.options.colors.ColorDescriptor
 import com.intellij.openapi.options.colors.ColorSettingsPage
+import nl.abbyberkers.lilypond.LilypondBundle
 import nl.abbyberkers.lilypond.LilypondIcons
 import javax.swing.Icon
 
@@ -25,17 +26,17 @@ class LilypondColorSettingsPage : ColorSettingsPage {
 }
 
 private val DESCRIPTORS = arrayOf(
-    AttributesDescriptor("Command", LilypondSyntaxHighlighter.COMMAND),
-    AttributesDescriptor("String", LilypondSyntaxHighlighter.STRING),
-    AttributesDescriptor("Comments//Line comment", LilypondSyntaxHighlighter.LINE_COMMENT),
-    AttributesDescriptor("Comments//Block comment", LilypondSyntaxHighlighter.BLOCK_COMMENT),
-    AttributesDescriptor("Number", LilypondSyntaxHighlighter.NUMBER),
-    AttributesDescriptor("Braces and groups", LilypondSyntaxHighlighter.BRACES),
-    AttributesDescriptor("Brackets", LilypondSyntaxHighlighter.BRACKETS),
-    AttributesDescriptor("Parentheses", LilypondSyntaxHighlighter.PARENTHESES),
-    AttributesDescriptor("Scheme//Marker (# \$ #{ #})", LilypondSyntaxHighlighter.SCHEME_MARKER),
-    AttributesDescriptor("Scheme//Constant (#t #f)", LilypondSyntaxHighlighter.CONSTANT),
-    AttributesDescriptor("Bad character", LilypondSyntaxHighlighter.BAD_CHARACTER),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.command"), LilypondSyntaxHighlighter.COMMAND),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.string"), LilypondSyntaxHighlighter.STRING),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.comment.line"), LilypondSyntaxHighlighter.LINE_COMMENT),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.comment.block"), LilypondSyntaxHighlighter.BLOCK_COMMENT),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.number"), LilypondSyntaxHighlighter.NUMBER),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.braces"), LilypondSyntaxHighlighter.BRACES),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.brackets"), LilypondSyntaxHighlighter.BRACKETS),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.parentheses"), LilypondSyntaxHighlighter.PARENTHESES),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.scheme.marker"), LilypondSyntaxHighlighter.SCHEME_MARKER),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.scheme.constant"), LilypondSyntaxHighlighter.CONSTANT),
+    AttributesDescriptor(LilypondBundle.messagePointer("color.settings.bad.character"), LilypondSyntaxHighlighter.BAD_CHARACTER),
 )
 
 private val DEMO_TEXT =
