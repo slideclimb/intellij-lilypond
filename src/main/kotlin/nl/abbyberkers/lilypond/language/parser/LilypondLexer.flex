@@ -66,7 +66,10 @@ STRING_LITERAL=\"([^\"\\]|\\[^])*\"
 // that carries its own token. Unchanged from the original lexer to preserve tokenization.
 WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
 
-BLOCK_COMMENT=%\{[^]*?%\}
+// `~` is JFlex's "up to and including" operator: match `%{` then everything up to the
+// FIRST `%}`. A plain `[^]*%}` would be maximal-munch (greedy) and swallow intervening code
+// up to the last `%}` in the file — JFlex does not treat `*?` as reluctant.
+BLOCK_COMMENT="%{" ~"%}"
 LINE_COMMENT=%[^\r\n]*
 
 SCM_IDENTIFIER=[a-zA-Z\-_:$[\xc0-\xf6\xf8-\xff]]+

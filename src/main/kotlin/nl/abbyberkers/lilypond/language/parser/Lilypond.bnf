@@ -31,6 +31,7 @@
     QUESTION_MARK="?"
     EXCLAMATION_MARK="!"
     BACKTICK="`"
+    AMPERSAND="&"
 
     EQUALS="="
     LEFT_BRACE="{"
@@ -52,7 +53,7 @@
 
     STRING_LITERAL="regexp:\"([^\"\\]|\\.)*\""
     WHITESPACE="regexp:\s+"
-    BLOCK_COMMENT="regexp:%\{(.|\n)*%}"
+    BLOCK_COMMENT="regexp:%\{[\s\S]*?%}"
     LINE_COMMENT="regexp:%[^{].*"
 
     SCM_IDENTIFIER="regexp:[a-zA-Z-:]+"
@@ -63,27 +64,57 @@
   ]
 }
 
-// Parser is stupid and ridiculously simple on purpose. LilyPond allows almost anything, everywhere, so for now keep it simple
-// and add complexity when it is useful for implementing a feature.
-lilypondFile ::= (base_expression | BLOCK_COMMENT | LINE_COMMENT)*
+// A LilyPond file is a flat sequence of items. Structure (blocks, assignments, groups,
+// scheme) is layered on top of a permissive catch-all so that arbitrary real-world
+// LilyPond always parses without PsiError: any token that isn't part of a recognised
+// construct still degrades to a single loose music token via `music_item`.
+lilypondFile ::= item*
 
-base_expression ::= expression | braced_expression | scheme_expression
+private item ::= comment | assignment | value
 
+// The set of things an item (or an assignment's right-hand side) can be. Ordered so the
+// structured constructs win over the loose catch-all; none of the structured alternatives
+// is pinned before its first token, so a non-match rolls back cleanly to `music_item`.
+private value ::= block
+  | music_group
+  | scheme_expr
+  | string_lit
+  | command
+  | music_item
+
+private comment ::= LINE_COMMENT | BLOCK_COMMENT
+
+// name = value  — the anchor for go-to-definition/rename on variables. Pinned on EQUALS so
+// a `word =` prefix commits to an assignment; a bare `word` not followed by `=` rolls back
+// to `music_item`.
+assignment ::= assignment_name EQUALS value { pin=2 }
+assignment_name ::= WORD
+
+// \word as a single lexer token — the anchor for command references/highlighting.
 command ::= COMMAND_TOKEN
 
-braced_expression ::= LEFT_BRACE unit* RIGHT_BRACE {pin=3}
+// \header { ... }, \score { ... }, \layout { ... }, \with { ... }, \markup { ... }, ...
+// i.e. a command immediately followed by a brace/simultaneous group. Named for folding and
+// the structure view. Not pinned: `\command` not followed by a group rolls back to `command`.
+block ::= command music_group
 
-expression ::= unit+
+music_group ::= braced | simultaneous
+braced ::= LEFT_BRACE item* RIGHT_BRACE { pin=1 }
+simultaneous ::= MULTI_VOICE_START item* MULTI_VOICE_END { pin=1 }
 
-unit ::= command
-  | DIGIT
+string_lit ::= STRING_LITERAL
+
+// Permissive fallback: any single music token. This guarantees the parser can always
+// advance, so unknown/odd LilyPond never yields a PsiError. Container delimiters
+// ({ } << >>) are deliberately excluded — they are owned by `music_group` so that
+// `item*` stops at a closing delimiter and the group consumes it.
+private music_item ::= DIGIT
   | DOT
   | COMMA
   | SINGLE_QUOTE
   | TILDE
   | BAR
   | SLASH
-  | BACKSLASH
   | COLON
   | UNDERSCORE
   | PLUS
@@ -94,29 +125,23 @@ unit ::= command
   | QUESTION_MARK
   | EXCLAMATION_MARK
   | EQUALS
-  | LEFT_BRACE
-  | RIGHT_BRACE
   | LEFT_BRACKET
   | RIGHT_BRACKET
   | LEFT_PAREN
   | RIGHT_PAREN
-  | MULTI_VOICE_START
-  | MULTI_VOICE_END
+  | BACKSLASH
   | SMALLER
   | GREATER
-  | string_lit
   | WORD
 
-string_lit ::= STRING_LITERAL
+// Scheme sub-grammar, carried over from the previous design (it already handles the
+// corpus). LilyPond embeds Scheme via #/$ and Scheme re-embeds LilyPond via #{ ... #};
+// the lexer resolves the mutual nesting, so here we only describe the shape.
+scheme_expr ::= (SCM_START | SCM_START_DOLLAR) scheme_expr_internal+
 
-// TODO implement https://www.scheme.com/tspl2d/grammar.html
-// Scheme parser has to be implemented here. Language injection is not possible because of nesting (LilyPond in Scheme and vice versa)
-// and references from/to both languages.
-scheme_expression ::= (SCM_START | SCM_START_DOLLAR) scheme_expression_internal+
+private scheme_expr_internal ::= scm_function | scm_unit | SCM_BLOCK_COMMENT | SCM_LINE_COMMENT | scm_lily
 
-scheme_expression_internal ::= scm_function | scm_unit | SCM_BLOCK_COMMENT | SCM_LINE_COMMENT | scm_lily
-
-scm_function ::= SCM_BACKTICK? (SCM_VECTOR_OPEN | SCM_LEFT_PAREN) scheme_expression_internal* SCM_RIGHT_PAREN
+scm_function ::= SCM_BACKTICK? (SCM_VECTOR_OPEN | SCM_LEFT_PAREN) scheme_expr_internal* SCM_RIGHT_PAREN
 
 scm_id ::= (SCM_IDENTIFIER | SCM_PLUS | SCM_MINUS | SCM_SLASH | SCM_STAR)
 
@@ -137,30 +162,5 @@ scm_unit ::= SCM_COMMA
 
 scm_number ::= SCM_MINUS? SCM_DIGIT+
 
-scm_lily ::= SCM_LILY_START (base_expression | BLOCK_COMMENT | LINE_COMMENT)* SCM_CONTINUE
-
-
-// more complicated version that has some problems (how to define `_6` in `\addScript _6 { a b c }`?)
-//expression ::= command | assignment | multi_voice | music_line | time_signature | scheme_expression | IDENTIFIER | STRING_LITERAL
-//
-//assignment ::= IDENTIFIER EQUALS expression {pin=2}
-//
-//multi_voice ::= MULTI_VOICE_START expression* MULTI_VOICE_END {pin=3}
-//
-//music_line ::= (note | SLASH | chord | command | BAR)+
-//
-//time_signature ::= DIGIT+ SLASH DIGIT+ {pin=2}
-//
-//chord ::= CHORD_START (command | note)* CHORD_END modifiers? {pin=3}
-//
-//note ::= (PLUS | MINUS)? IDENTIFIER modifiers? (COLON SLASH? chord_mode_augmentation)?
-//
-//modifiers ::= (octave_modifier | duration_modifier | articulation | TILDE | LEFT_PAREN | RIGHT_PAREN | LEFT_BRACKET | RIGHT_BRACKET | PLUS | MINUS | SLASH | STRING_LITERAL | command)+
-//
-//duration_modifier ::= DIGIT DOT?
-//
-//octave_modifier ::= EQUALS? (SINGLE_QUOTE+ | COMMA+)
-//
-//articulation ::= MINUS (HAT | PLUS | MINUS | EXCLAMATION_MARK | CHORD_END | DOT | UNDERSCORE)
-//
-//chord_mode_augmentation ::= (IDENTIFIER | DIGIT | DOT | PLUS | MINUS | HAT | UNDERSCORE)+
+// #{ ... #} — LilyPond re-embedded inside Scheme. Its body is the same item stream.
+scm_lily ::= SCM_LILY_START item* SCM_CONTINUE
