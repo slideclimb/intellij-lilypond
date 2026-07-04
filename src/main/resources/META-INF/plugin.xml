@@ -15,5 +15,7 @@
                   language="LilyPond"
                   extensions="ly;ily"/>
         <lang.parserDefinition language="LilyPond" implementationClass="nl.abbyberkers.lilypond.language.parser.LilypondParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="LilyPond" implementationClass="nl.abbyberkers.lilypond.language.highlighting.LilypondSyntaxHighlighterFactory"/>
+        <colorSettingsPage implementation="nl.abbyberkers.lilypond.language.highlighting.LilypondColorSettingsPage"/>
     </extensions>
 </idea-plugin>
