@@ -70,7 +70,7 @@
 // construct still degrades to a single loose music token via `music_item`.
 lilypondFile ::= item*
 
-private item ::= comment | assignment | value
+private item ::= assignment | value
 
 // The set of things an item (or an assignment's right-hand side) can be. Ordered so the
 // structured constructs win over the loose catch-all; none of the structured alternatives
@@ -81,8 +81,6 @@ private value ::= block
   | string_lit
   | command
   | music_item
-
-private comment ::= LINE_COMMENT | BLOCK_COMMENT
 
 // name = value  — the anchor for go-to-definition/rename on variables. Pinned on EQUALS so
 // a `word =` prefix commits to an assignment; a bare `word` not followed by `=` rolls back
@@ -139,7 +137,7 @@ private music_item ::= DIGIT
 // the lexer resolves the mutual nesting, so here we only describe the shape.
 scheme_expr ::= (SCM_START | SCM_START_DOLLAR) scheme_expr_internal+
 
-private scheme_expr_internal ::= scm_function | scm_unit | SCM_BLOCK_COMMENT | SCM_LINE_COMMENT | scm_lily
+private scheme_expr_internal ::= scm_function | scm_unit | scm_lily
 
 scm_function ::= SCM_BACKTICK? (SCM_VECTOR_OPEN | SCM_LEFT_PAREN) scheme_expr_internal* SCM_RIGHT_PAREN
 
