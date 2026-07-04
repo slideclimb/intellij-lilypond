@@ -1,15 +1,16 @@
 ---
 name: run-tests
-description: Run this project's tests via Gradle and read per-test failure output. Use whenever you need to run tests and see which ones failed and why — the IDE run-configuration tool returns an empty output snapshot, so this runs Gradle in the shell and parses the JUnit XML for full detail. Works for any test class; run a narrow filter first, then the whole suite.
-allowed-tools: Bash(./gradlew test:*), Bash(python3 .claude/skills/run-tests/summarize.py:*)
+description: Run this project's tests via Gradle and read per-test failure output. Use whenever you need to run tests and see which ones failed and why — the IDE run-configuration tool returns an empty output snapshot, so this runs Gradle in the shell and reads the JUnit XML (with the Read tool) for full detail. Works for any test class; run a narrow filter first, then the whole suite.
+allowed-tools: Bash(./gradlew test:*), Read
 ---
 
 # Run tests
 
-Run the project's tests through Gradle and get an actionable per-test summary. The IDE
-`execute_run_configuration` tool often returns an empty output snapshot, and Gradle's own
-stdout truncates failure detail — so this skill runs Gradle in the shell and parses the
-JUnit XML in `build/test-results/test/`, which is always written in full.
+Run the project's tests through Gradle, then read failure detail from the JUnit XML that
+`build/test-results/test/` always writes in full. The IDE `execute_run_configuration` tool
+often returns an empty output snapshot, and Gradle's own stdout truncates per-test failure
+detail — so run Gradle in the shell for the headline result, and open the XML with the
+**Read tool** for the full message.
 
 Works for **any** test class in the project. Prefer a narrow `--tests` filter while
 iterating (faster, focused output); run the whole suite once it's green.
@@ -22,30 +23,49 @@ Whole suite:
 
 ```bash
 ./gradlew test 2>&1 | tail -30
-python3 .claude/skills/run-tests/summarize.py
 ```
 
 A single class (or any name substring):
 
 ```bash
 ./gradlew test --tests "*SnippetsTest*" 2>&1 | tail -30
-python3 .claude/skills/run-tests/summarize.py SnippetsTest
 ```
 
-`summarize.py`'s first argument is a substring matched against the JUnit result file
-names (`build/test-results/test/TEST-<classname>.xml`); pass the same class name you used
-in `--tests`, or omit it to summarize the whole suite. A second argument caps how many
-failing tests are listed (default 40).
+Gradle's own output gives the headline: `BUILD SUCCESSFUL` / `BUILD FAILED`, the count
+(`N tests completed, M failed`), and one `... FAILED` line naming each failing test.
+Sanity-check that the count matches what you expect — a `--tests` filter typo can match
+**zero** tests and still print `BUILD SUCCESSFUL`.
 
-## Reading results
+If the test task never ran (no `N tests completed` line, no XML written), it's usually a
+compile or code-generation error — read the Gradle output above the summary.
 
-- `BUILD SUCCESSFUL` + `summarize.py` reporting `[PASS] N tests | N passed | 0 failures`
-  means everything passed. Sanity-check that `N` matches the count you expect — a `--tests`
-  filter typo can match **zero** tests and still report `BUILD SUCCESSFUL`.
-- On failure, Gradle exits non-zero and truncates per-test detail. `summarize.py` lists
-  each failing test (`ClassName.testName`) with the first line of its failure message.
-- If `summarize.py` prints `No result XML matched`, the test task did not run — usually a
-  compile or code-generation error earlier in the Gradle output. Read the output above it.
+## Reading failure detail — use the Read tool
+
+Gradle truncates the per-test failure message, but the full JUnit XML is always written to:
+
+```
+build/test-results/test/TEST-<fully-qualified-class>.xml
+```
+
+e.g. `build/test-results/test/TEST-nl.abbyberkers.lilypond.language.parser.SnippetsTest.xml`.
+
+Each test is a `<testcase name="..." classname="...">`; a failing one contains a
+`<failure message="...">` whose `message` attribute holds the full assertion text (for the
+parser tests, the `PsiError...` line naming the offending file/token).
+
+These XML files are **large** — one `<testcase>` per corpus file (RegressionTest is ~2090,
+well over the Read tool's default line limit) — so do **not** read the whole file:
+
+1. The gradle `... FAILED` lines already tell you *which* tests failed. The XML is only for
+   the full message.
+2. **Locate each failure, then Read just around it.** Use a search tool (e.g.
+   `mcp__idea__search_regex`) for `PsiError` (or `<failure` for non-parser tests) to get the
+   line number, then Read that line with `offset`/`limit`. The `<failure message="...">`
+   attribute on that line is the full message.
+
+To see the whole failing PSI tree (not just the first error line), temporarily have the test
+write `DebugUtil.psiToString(psiFile, true)` to a scratch file on failure, run once, then
+Read that file — but revert the instrumentation before finishing.
 
 ## Project-specific test notes
 
