@@ -1,5 +1,6 @@
 package nl.abbyberkers.lilypond.language.parser
 
+import com.intellij.psi.TokenType
 import com.intellij.psi.tree.TokenSet
 import nl.abbyberkers.lilypond.language.psi.LilypondTypes
 
@@ -16,6 +17,12 @@ interface LilypondTokenSets {
             LilypondTypes.SCM_LINE_COMMENT,
             LilypondTypes.SCM_BLOCK_COMMENT,
         )
-        val STRING_LITERALS = TokenSet.create()
+
+        // Exposed via getStringLiteralElements(); drives string spell-check and language
+        // injection. LilyPond and embedded Scheme share the one STRING_LITERAL token.
+        val STRING_LITERALS = TokenSet.create(LilypondTypes.STRING_LITERAL)
+
+        // Exposed via getWhitespaceTokens(); the lexer emits the platform WHITE_SPACE token.
+        val WHITESPACES = TokenSet.create(TokenType.WHITE_SPACE)
     }
 }

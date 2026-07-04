@@ -19,6 +19,8 @@ class LilypondParserDefinition : ParserDefinition {
 
     override fun getFileNodeType(): IFileElementType = FILE
 
+    override fun getWhitespaceTokens(): TokenSet = LilypondTokenSets.WHITESPACES
+
     override fun getCommentTokens(): TokenSet = LilypondTokenSets.COMMENTS
 
     override fun getStringLiteralElements(): TokenSet = LilypondTokenSets.STRING_LITERALS
