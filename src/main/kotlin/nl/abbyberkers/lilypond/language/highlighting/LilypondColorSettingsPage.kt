@@ -9,7 +9,6 @@ import nl.abbyberkers.lilypond.LilypondIcons
 import javax.swing.Icon
 
 class LilypondColorSettingsPage : ColorSettingsPage {
-
     override fun getDisplayName(): String = "LilyPond"
 
     override fun getIcon(): Icon = LilypondIcons.FILE
@@ -23,7 +22,6 @@ class LilypondColorSettingsPage : ColorSettingsPage {
     override fun getAttributeDescriptors(): Array<AttributesDescriptor> = DESCRIPTORS
 
     override fun getColorDescriptors(): Array<ColorDescriptor> = ColorDescriptor.EMPTY_ARRAY
-
 }
 
 private val DESCRIPTORS = arrayOf(
@@ -40,7 +38,8 @@ private val DESCRIPTORS = arrayOf(
     AttributesDescriptor("Bad character", LilypondSyntaxHighlighter.BAD_CHARACTER),
 )
 
-private val DEMO_TEXT = """
+private val DEMO_TEXT =
+    """
     \version "2.24.0"
 
     % a line comment
@@ -58,4 +57,4 @@ private val DEMO_TEXT = """
     }
 
     #(define (double x) (* x 2))
-""".trimIndent()
+    """.trimIndent()

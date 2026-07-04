@@ -28,7 +28,6 @@ class LilypondParserDefinition : ParserDefinition {
     override fun createElement(node: ASTNode): PsiElement = LilypondTypes.Factory.createElement(node)
 
     override fun createFile(viewProvider: FileViewProvider): PsiFile = LilypondFile(viewProvider)
-
 }
 
 val FILE = IFileElementType(LilypondLanguage)

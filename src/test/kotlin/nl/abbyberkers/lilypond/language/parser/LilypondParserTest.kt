@@ -12,16 +12,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 
-
 @RunWith(Parameterized::class)
 sealed class LilypondParserTest(val path: String) : LightPlatformCodeInsightTestCase(), FileBasedTestCaseHelperEx {
-    override fun getTestDataPath(): String {
-        return path
-    }
+    override fun getTestDataPath(): String = path
 
-    override fun getFileSuffix(filename: String): String? {
-        return if (filename.endsWith(".ly")) filename else null
-    }
+    override fun getFileSuffix(filename: String): String? = if (filename.endsWith(".ly")) filename else null
 
     @Test
     fun testNoParseErrors() {
@@ -33,9 +28,7 @@ sealed class LilypondParserTest(val path: String) : LightPlatformCodeInsightTest
         }
     }
 
-    override fun getRelativeBasePath(): String {
-        return ""
-    }
+    override fun getRelativeBasePath(): String = ""
 }
 
 /**
