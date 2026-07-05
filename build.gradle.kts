@@ -66,6 +66,7 @@ tasks.named<GenerateParserTask>("generateParser") {
 // Make compilation depend on generation so plain `./gradlew build` (and CI) always regenerates.
 tasks.named("compileKotlin") { dependsOn("generateLexer", "generateParser") }
 tasks.named("compileJava") { dependsOn("generateLexer", "generateParser") }
+tasks.named("runKtlintCheckOverMainSourceSet") { dependsOn("generateLexer", "generateParser") }
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/version_catalogs.html
 dependencies {
