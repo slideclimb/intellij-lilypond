@@ -61,6 +61,10 @@
     SCM_LINE_COMMENT="regexp:;.*"
 
     WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+"
+
+    // A word inside a non-note input mode (e.g. lyric mode): same shape as WORD, but the
+    // lexer emits this type so note highlighting can tell syllables from notes.
+    MODE_WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+"
   ]
 }
 
@@ -131,6 +135,7 @@ private music_item ::= DIGIT
   | SMALLER
   | GREATER
   | WORD
+  | MODE_WORD
 
 // Scheme sub-grammar, carried over from the previous design (it already handles the
 // corpus). LilyPond embeds Scheme via #/$ and Scheme re-embeds LilyPond via #{ ... #};

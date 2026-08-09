@@ -43,6 +43,27 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
     return !schemeBracketsOpenStack.isEmpty()
         && schemeBracketsOpen == schemeBracketsOpenStack.peek();
   }
+
+  // Non-note input modes (currently lyric mode) reinterpret bare words as syllables, not
+  // notes, so their words are emitted as MODE_WORD to keep them out of note highlighting.
+  // Tracked with instance fields like the scheme nesting above; the FlexAdapter only
+  // checkpoints yystate(), so this is not restored on a mid-file incremental relex — the
+  // same known tradeoff the scheme fields already carry.
+  private int braceDepth = 0;
+
+  // Set when a mode-switching command is seen; consumed by the next '{', which opens the
+  // mode body. Lyric-mode commands are always brace-delimited, so the flag can't strand.
+  private boolean pendingModeSuppress = false;
+
+  // braceDepth captured when each non-note-mode `{ ... }` opened; the region ends once
+  // braceDepth falls back to that value.
+  private final Deque<Integer> suppressBraceStack = new ArrayDeque<>();
+
+  private static boolean isModeSwitch(CharSequence command) {
+    return "\\lyricmode".contentEquals(command)
+        || "\\addlyrics".contentEquals(command)
+        || "\\lyricsto".contentEquals(command);
+  }
 %}
 
 %public
@@ -82,7 +103,7 @@ SCM_LINE_COMMENT=;.*
 
 <YYINITIAL> {
   {STRING_LITERAL}       { return STRING_LITERAL; }
-  {COMMAND_TOKEN}        { return COMMAND_TOKEN; }
+  {COMMAND_TOKEN}        { if (isModeSwitch(yytext())) pendingModeSuppress = true; return COMMAND_TOKEN; }
 
   "<<"                   { return MULTI_VOICE_START; }
   ">>"                   { return MULTI_VOICE_END; }
@@ -113,8 +134,16 @@ SCM_LINE_COMMENT=;.*
   "'"                    { return SINGLE_QUOTE; }
   "~"                    { return TILDE; }
   "&"                    { return AMPERSAND; }
-  "{"                    { return LEFT_BRACE; }
-  "}"                    { return RIGHT_BRACE; }
+  "{"                    {
+          braceDepth++;
+          if (pendingModeSuppress) { suppressBraceStack.push(braceDepth); pendingModeSuppress = false; }
+          return LEFT_BRACE;
+      }
+  "}"                    {
+          if (!suppressBraceStack.isEmpty() && suppressBraceStack.peek() == braceDepth) suppressBraceStack.pop();
+          braceDepth--;
+          return RIGHT_BRACE;
+      }
   "["                    { return LEFT_BRACKET; }
   "]"                    { return RIGHT_BRACKET; }
   "?"                    { return QUESTION_MARK; }
@@ -126,7 +155,7 @@ SCM_LINE_COMMENT=;.*
   {WS}                   { return WHITE_SPACE; }
   {BLOCK_COMMENT}        { return BLOCK_COMMENT; }
   {LINE_COMMENT}         { return LINE_COMMENT; }
-  {WORD}                 { return WORD; }
+  {WORD}                 { return suppressBraceStack.isEmpty() ? WORD : MODE_WORD; }
 }
 
 <SCHEME> {

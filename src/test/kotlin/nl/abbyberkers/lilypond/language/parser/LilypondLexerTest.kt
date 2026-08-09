@@ -1,0 +1,43 @@
+package nl.abbyberkers.lilypond.language.parser
+
+import com.intellij.psi.tree.IElementType
+import nl.abbyberkers.lilypond.language.psi.LilypondTypes
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/**
+ * Verifies the lexer's input-mode tracking: bare words are notes (WORD) in note mode but
+ * syllables (MODE_WORD) inside lyric mode, which is what keeps lyrics out of note highlighting.
+ */
+class LilypondLexerTest {
+    private fun tokenType(text: String, word: String): IElementType {
+        val lexer = LilypondLexerAdapter()
+        lexer.start(text)
+        while (lexer.tokenType != null) {
+            if (lexer.tokenText == word) return lexer.tokenType!!
+            lexer.advance()
+        }
+        error("token '$word' not found in '$text'")
+    }
+
+    @Test
+    fun noteWordsAreWordInNoteMode() {
+        assertEquals(LilypondTypes.WORD, tokenType("{ c4 d8 }", "c4"))
+        assertEquals(LilypondTypes.WORD, tokenType("melody = \\relative c' { cis16 }", "cis16"))
+    }
+
+    @Test
+    fun wordsAreModeWordInsideLyricMode() {
+        assertEquals(LilypondTypes.MODE_WORD, tokenType("\\lyricmode { as a be }", "as"))
+        assertEquals(LilypondTypes.MODE_WORD, tokenType("\\addlyrics { la la }", "la"))
+        // The mode command may be separated from its brace body by an argument.
+        assertEquals(LilypondTypes.MODE_WORD, tokenType("\\lyricsto \"v\" { as }", "as"))
+    }
+
+    @Test
+    fun lyricModeEndsAtItsClosingBrace() {
+        // The note after the lyric block is a note again, and inner braces do not end the mode early.
+        assertEquals(LilypondTypes.WORD, tokenType("\\lyricmode { as } c4", "c4"))
+        assertEquals(LilypondTypes.MODE_WORD, tokenType("\\lyricmode { a { b } c }", "c"))
+    }
+}
