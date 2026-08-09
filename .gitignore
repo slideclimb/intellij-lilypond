@@ -5,3 +5,7 @@
 .kotlin
 .qodana
 build
+idea-flex.skeleton
+jflex-*.jar
+src/main/gen
+/.mcp.json

@@ -1,14 +1,18 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.grammarkit.tasks.GenerateLexerTask
+import org.jetbrains.grammarkit.tasks.GenerateParserTask
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     id("java") // Java support
     alias(libs.plugins.kotlin) // Kotlin support
+    alias(libs.plugins.grammarkit) // GrammarKit: generate lexer (JFlex) and parser/PSI from .flex/.bnf
     alias(libs.plugins.intelliJPlatform) // IntelliJ Platform Gradle Plugin
     alias(libs.plugins.changelog) // Gradle Changelog Plugin
     alias(libs.plugins.qodana) // Gradle Qodana Plugin
     alias(libs.plugins.kover) // Gradle Kover Plugin
+    alias(libs.plugins.ktlint) // ktlint: Kotlin formatting/linting, configured via .editorconfig
 }
 
 group = providers.gradleProperty("pluginGroup").get()
@@ -28,6 +32,41 @@ repositories {
         defaultRepositories()
     }
 }
+
+sourceSets {
+    main {
+        java {
+            srcDirs("src/main/gen")
+        }
+    }
+}
+
+// Generate the LilyPond lexer/parser/PSI from the committed .flex/.bnf into src/main/gen.
+// src/main/gen is gitignored: it is a reproducible build product, regenerated here so it can
+// never drift from the sources the way a manually IDE-generated tree does.
+val langPkg = "nl/abbyberkers/lilypond/language"
+
+tasks.named<GenerateLexerTask>("generateLexer") {
+    sourceFile.set(file("src/main/kotlin/$langPkg/parser/LilypondLexer.flex"))
+    targetOutputDir.set(file("src/main/gen/$langPkg/parser"))
+    // Must stay false: the lexer shares the parser/ package dir with the generated
+    // parser, and purge here wipes the whole dir (clobbering LilypondParser.java when
+    // both tasks run). The parser task's own purge is scoped to psi/ + the parser file.
+    purgeOldFiles.set(false)
+}
+
+tasks.named<GenerateParserTask>("generateParser") {
+    sourceFile.set(file("src/main/kotlin/$langPkg/parser/Lilypond.bnf"))
+    targetRootOutputDir.set(file("src/main/gen"))
+    pathToParser.set("/$langPkg/parser/LilypondParser.java")
+    pathToPsiRoot.set("/$langPkg/psi")
+    purgeOldFiles.set(true)
+}
+
+// Make compilation depend on generation so plain `./gradlew build` (and CI) always regenerates.
+tasks.named("compileKotlin") { dependsOn("generateLexer", "generateParser") }
+tasks.named("compileJava") { dependsOn("generateLexer", "generateParser") }
+tasks.named("runKtlintCheckOverMainSourceSet") { dependsOn("generateLexer", "generateParser") }
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/version_catalogs.html
 dependencies {
@@ -58,30 +97,32 @@ intellijPlatform {
         version = providers.gradleProperty("pluginVersion")
 
         // Extract the <!-- Plugin description --> section from README.md and provide for the plugin's manifest
-        description = providers.fileContents(layout.projectDirectory.file("README.md")).asText.map {
-            val start = "<!-- Plugin description -->"
-            val end = "<!-- Plugin description end -->"
+        description =
+            providers.fileContents(layout.projectDirectory.file("README.md")).asText.map {
+                val start = "<!-- Plugin description -->"
+                val end = "<!-- Plugin description end -->"
 
-            with(it.lines()) {
-                if (!containsAll(listOf(start, end))) {
-                    throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
+                with(it.lines()) {
+                    if (!containsAll(listOf(start, end))) {
+                        throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
+                    }
+                    subList(indexOf(start) + 1, indexOf(end)).joinToString("\n").let(::markdownToHTML)
                 }
-                subList(indexOf(start) + 1, indexOf(end)).joinToString("\n").let(::markdownToHTML)
             }
-        }
 
         val changelog = project.changelog // local variable for configuration cache compatibility
         // Get the latest available change notes from the changelog file
-        changeNotes = providers.gradleProperty("pluginVersion").map { pluginVersion ->
-            with(changelog) {
-                renderItem(
-                    (getOrNull(pluginVersion) ?: getUnreleased())
-                        .withHeader(false)
-                        .withEmptySections(false),
-                    Changelog.OutputType.HTML,
-                )
+        changeNotes =
+            providers.gradleProperty("pluginVersion").map { pluginVersion ->
+                with(changelog) {
+                    renderItem(
+                        (getOrNull(pluginVersion) ?: getUnreleased())
+                            .withHeader(false)
+                            .withEmptySections(false),
+                        Changelog.OutputType.HTML,
+                    )
+                }
             }
-        }
 
         ideaVersion {
             sinceBuild = providers.gradleProperty("pluginSinceBuild")
@@ -99,7 +140,10 @@ intellijPlatform {
         // The pluginVersion is based on the SemVer (https://semver.org) and supports pre-release labels, like 2.1.7-alpha.3
         // Specify pre-release label to publish the plugin in a custom Release Channel automatically. Read more:
         // https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html#specifying-a-release-channel
-        channels = providers.gradleProperty("pluginVersion").map { listOf(it.substringAfter('-', "").substringBefore('.').ifEmpty { "default" }) }
+        channels =
+            providers.gradleProperty("pluginVersion").map {
+                listOf(it.substringAfter('-', "").substringBefore('.').ifEmpty { "default" })
+            }
     }
 
     pluginVerification {
@@ -114,6 +158,16 @@ changelog {
     groups.empty()
     repositoryUrl = providers.gradleProperty("pluginRepositoryUrl")
     versionPrefix = ""
+}
+
+// Configure ktlint - style rules themselves live in .editorconfig, read by both ktlint and the IDE.;
+ktlint {
+    version = "1.7.1"
+    verbose = true
+    filter {
+        // src/main/gen is a regenerated build product (and holds only generated Java anyway).
+        exclude { it.file.path.contains("/src/main/gen/") }
+    }
 }
 
 // Configure Gradle Kover Plugin - read more: https://kotlin.github.io/kotlinx-kover/gradle-plugin/#configuration-details
@@ -141,14 +195,15 @@ intellijPlatformTesting {
     runIde {
         register("runIdeForUiTests") {
             task {
-                jvmArgumentProviders += CommandLineArgumentProvider {
-                    listOf(
-                        "-Drobot-server.port=8082",
-                        "-Dide.mac.message.dialogs.as.sheets=false",
-                        "-Djb.privacy.policy.text=<!--999.999-->",
-                        "-Djb.consents.confirmation.enabled=false",
-                    )
-                }
+                jvmArgumentProviders +=
+                    CommandLineArgumentProvider {
+                        listOf(
+                            "-Drobot-server.port=8082",
+                            "-Dide.mac.message.dialogs.as.sheets=false",
+                            "-Djb.privacy.policy.text=<!--999.999-->",
+                            "-Djb.consents.confirmation.enabled=false",
+                        )
+                    }
             }
 
             plugins {
