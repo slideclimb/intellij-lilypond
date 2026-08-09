@@ -5,6 +5,7 @@
     <vendor>Abby Berkers</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
 
     <resource-bundle>messages.LilypondBundle</resource-bundle>
 
@@ -17,5 +18,12 @@
         <lang.parserDefinition language="LilyPond" implementationClass="nl.abbyberkers.lilypond.language.parser.LilypondParserDefinition"/>
         <lang.syntaxHighlighterFactory language="LilyPond" implementationClass="nl.abbyberkers.lilypond.language.highlighting.LilypondSyntaxHighlighterFactory"/>
         <colorSettingsPage implementation="nl.abbyberkers.lilypond.language.highlighting.LilypondColorSettingsPage"/>
+
+        <configurationType implementation="nl.abbyberkers.lilypond.run.LilypondRunConfigurationType"/>
+        <runConfigurationProducer implementation="nl.abbyberkers.lilypond.run.LilypondRunConfigurationProducer"/>
+        <notificationGroup id="LilyPond"
+                           displayType="BALLOON"
+                           bundle="messages.LilypondBundle"
+                           key="notification.group.lilypond"/>
     </extensions>
 </idea-plugin>
