@@ -210,5 +210,14 @@ intellijPlatformTesting {
                 robotServerPlugin()
             }
         }
+
+        // The plugin has no compile-time dependency on the PDF viewer: it is found at runtime through
+        // the file editor it registers for PDFs. This task makes that path testable by hand, while
+        // plain `runIde` exercises the fallback to the system viewer.
+        register("runIdeWithPdfViewer") {
+            plugins {
+                compatiblePlugin("com.firsttimeinforever.intellij.pdf.viewer.intellij-pdf-viewer")
+            }
+        }
     }
 }
