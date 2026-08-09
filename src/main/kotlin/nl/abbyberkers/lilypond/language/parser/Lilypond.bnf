@@ -1,0 +1,164 @@
+{
+  parserClass="nl.abbyberkers.lilypond.language.parser.LilypondParser"
+
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Lilypond"
+  psiImplClassSuffix="Impl"
+  psiPackage="nl.abbyberkers.lilypond.language.psi"
+  psiImplPackage="nl.abbyberkers.lilypond.language.psi.impl"
+
+  elementTypeHolderClass="nl.abbyberkers.lilypond.language.psi.LilypondTypes"
+  elementTypeClass="nl.abbyberkers.lilypond.language.psi.LilypondElementType"
+  tokenTypeClass="nl.abbyberkers.lilypond.language.psi.LilypondTokenType"
+
+  tokens = [
+    BACKSLASH='\'
+    COMMAND_TOKEN="regexp:\\[a-zA-Z]+"
+    DIGIT="regexp:\d"
+    DOT="."
+    COMMA=","
+    SINGLE_QUOTE="'"
+    TILDE="~"
+    BAR="|"
+    SLASH="/"
+    COLON=":"
+    UNDERSCORE="_"
+    PLUS="+"
+    MINUS="-"
+    STAR="*"
+    HAT="^"
+    QUESTION_MARK="?"
+    EXCLAMATION_MARK="!"
+    BACKTICK="`"
+    AMPERSAND="&"
+
+    EQUALS="="
+    LEFT_BRACE="{"
+    RIGHT_BRACE="}"
+    LEFT_BRACKET="["
+    RIGHT_BRACKET="]"
+    LEFT_PAREN="("
+    RIGHT_PAREN=")"
+
+    MULTI_VOICE_START="<<"
+    MULTI_VOICE_END=">>"
+    SMALLER="<"
+    GREATER=">"
+
+    SCM_START="#"
+    SCM_CONTINUE="#}"
+    SCM_LILY_START="#{"
+    SCM_START_DOLLAR="$"
+
+    STRING_LITERAL="regexp:\"([^\"\\]|\\.)*\""
+    WHITESPACE="regexp:\s+"
+    BLOCK_COMMENT="regexp:%\{[\s\S]*?%}"
+    LINE_COMMENT="regexp:%[^{].*"
+
+    SCM_IDENTIFIER="regexp:[a-zA-Z-:]+"
+    SCM_BLOCK_COMMENT="regexp:#!\{(.|\n)*!#"
+    SCM_LINE_COMMENT="regexp:;.*"
+
+    WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+"
+  ]
+}
+
+// A LilyPond file is a flat sequence of items. Structure (blocks, assignments, groups,
+// scheme) is layered on top of a permissive catch-all so that arbitrary real-world
+// LilyPond always parses without PsiError: any token that isn't part of a recognised
+// construct still degrades to a single loose music token via `music_item`.
+lilypondFile ::= item*
+
+private item ::= assignment | value
+
+// The set of things an item (or an assignment's right-hand side) can be. Ordered so the
+// structured constructs win over the loose catch-all; none of the structured alternatives
+// is pinned before its first token, so a non-match rolls back cleanly to `music_item`.
+private value ::= block
+  | music_group
+  | scheme_expr
+  | string_lit
+  | command
+  | music_item
+
+// name = value  — the anchor for go-to-definition/rename on variables. Pinned on EQUALS so
+// a `word =` prefix commits to an assignment; a bare `word` not followed by `=` rolls back
+// to `music_item`.
+assignment ::= assignment_name EQUALS value { pin=2 }
+assignment_name ::= WORD
+
+// \word as a single lexer token — the anchor for command references/highlighting.
+command ::= COMMAND_TOKEN
+
+// \header { ... }, \score { ... }, \layout { ... }, \with { ... }, \markup { ... }, ...
+// i.e. a command immediately followed by a brace/simultaneous group. Named for folding and
+// the structure view. Not pinned: `\command` not followed by a group rolls back to `command`.
+block ::= command music_group
+
+music_group ::= braced | simultaneous
+braced ::= LEFT_BRACE item* RIGHT_BRACE { pin=1 }
+simultaneous ::= MULTI_VOICE_START item* MULTI_VOICE_END { pin=1 }
+
+string_lit ::= STRING_LITERAL
+
+// Permissive fallback: any single music token. This guarantees the parser can always
+// advance, so unknown/odd LilyPond never yields a PsiError. Container delimiters
+// ({ } << >>) are deliberately excluded — they are owned by `music_group` so that
+// `item*` stops at a closing delimiter and the group consumes it.
+private music_item ::= DIGIT
+  | DOT
+  | COMMA
+  | SINGLE_QUOTE
+  | TILDE
+  | BAR
+  | SLASH
+  | COLON
+  | UNDERSCORE
+  | PLUS
+  | MINUS
+  | STAR
+  | HAT
+  | AMPERSAND
+  | QUESTION_MARK
+  | EXCLAMATION_MARK
+  | EQUALS
+  | LEFT_BRACKET
+  | RIGHT_BRACKET
+  | LEFT_PAREN
+  | RIGHT_PAREN
+  | BACKSLASH
+  | SMALLER
+  | GREATER
+  | WORD
+
+// Scheme sub-grammar, carried over from the previous design (it already handles the
+// corpus). LilyPond embeds Scheme via #/$ and Scheme re-embeds LilyPond via #{ ... #};
+// the lexer resolves the mutual nesting, so here we only describe the shape.
+scheme_expr ::= (SCM_START | SCM_START_DOLLAR) scheme_expr_internal+
+
+private scheme_expr_internal ::= scm_function | scm_unit | scm_lily
+
+scm_function ::= SCM_BACKTICK? (SCM_VECTOR_OPEN | SCM_LEFT_PAREN) scheme_expr_internal* SCM_RIGHT_PAREN
+
+scm_id ::= (SCM_IDENTIFIER | SCM_PLUS | SCM_MINUS | SCM_SLASH | SCM_STAR)
+
+scm_unit ::= SCM_COMMA
+  | SCM_SINGLE_QUOTE
+  | SCM_DOT
+  | string_lit
+  | SCM_SMALLER
+  | SCM_GREATER
+  | SCM_QUESTION_MARK
+  | SCM_EXCLAMATION_MARK
+  | SCM_EQUALS
+  | SCM_AT
+  | SCM_TRUE
+  | SCM_FALSE
+  | SCM_CHAR_START
+  | ((SCM_HASH | SCM_SINGLE_QUOTE)? (scm_number | scm_id) (SCM_QUESTION_MARK | SCM_EXCLAMATION_MARK)?)
+
+scm_number ::= SCM_MINUS? SCM_DIGIT+
+
+// #{ ... #} — LilyPond re-embedded inside Scheme. Its body is the same item stream.
+scm_lily ::= SCM_LILY_START item* SCM_CONTINUE
