@@ -169,6 +169,14 @@ ktlint {
     }
 }
 
+// The filter above skips every file in src/main/gen, but ktlint still takes the directory as a task
+// input because it is a source dir, and Gradle refuses to order a task against a directory another
+// task writes unless the dependency is declared. Running the generators first is the honest answer:
+// linting a half-written gen tree is exactly what the validation is there to prevent.
+tasks.matching { it.name.startsWith("runKtlint") }.configureEach {
+    dependsOn("generateLexer", "generateParser")
+}
+
 // Configure Gradle Kover Plugin - read more: https://kotlin.github.io/kotlinx-kover/gradle-plugin/#configuration-details
 kover {
     reports {
