@@ -28,4 +28,9 @@
                            bundle="messages.LilypondBundle"
                            key="notification.group.lilypond"/>
     </extensions>
+
+    <projectListeners>
+        <listener class="nl.abbyberkers.lilypond.run.LilypondTemporaryConfigurationKeeper"
+                  topic="com.intellij.execution.RunManagerListener"/>
+    </projectListeners>
 </idea-plugin>
