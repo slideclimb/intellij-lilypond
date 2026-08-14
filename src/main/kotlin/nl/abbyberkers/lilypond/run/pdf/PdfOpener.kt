@@ -44,23 +44,59 @@ object PdfOpener {
     }
 
     /**
-     * Not requesting focus is load-bearing: `openInRightSplit` splits whichever window currently has
-     * focus, so with focus in the PDF pane the next compile would split that pane, nesting splitters
-     * without end. Leaving focus in the score keeps the score on the left and makes later runs reuse
-     * the same right-hand pane.
+     * Splitting is the last resort: a pane that is already showing a score is where the next one belongs.
      *
-     * The [runCatching] is not defensive noise: `splitters` throws outright in headless tests
-     * (`TestEditorManagerImpl`), and `openInRightSplit` returns null when there is no window to split from.
-     * A plain tab is the right answer to both.
+     * No branch requests focus, since the user is reading the score rather than the PDF. For the split
+     * that is also load-bearing: `openInRightSplit` splits whichever window has focus, so focus in the
+     * PDF pane would make the next compile split *that* pane, nesting splitters without end.
+     *
+     * The [runCatching] is not defensive noise, and it wraps the window search as well as the opening:
+     * `splitters` throws outright in headless tests (`TestEditorManagerImpl`), and `openInRightSplit`
+     * returns null when there is no window to split. A plain tab is the right answer to both.
      */
     private fun openInEditor(project: Project, pdf: VirtualFile) {
         val manager = FileEditorManagerEx.getInstanceEx(project)
-        val split = runCatching { manager.splitters.openInRightSplit(pdf, false) }
-            .onFailure { log.warn("Could not open ${pdf.name} in a split", it) }
-            .getOrNull()
-        if (split != null) return
+        val placed = runCatching {
+            val host = selectHostWindow(manager.windows.asList(), pdf.path) { window ->
+                window.fileList.map { it.path }
+            }
+            if (host == null) {
+                manager.splitters.openInRightSplit(pdf, false) != null
+            } else {
+                // openFile aims at the current window, and the overload taking an explicit window needs
+                // an @ApiStatus.Internal options class, so point the current window at the host instead.
+                // Only the pointer moves; focus stays where it is.
+                host.setAsCurrentWindow(false)
+                manager.openFile(pdf, false)
+                true
+            }
+        }
+            .onFailure { log.warn("Could not open ${pdf.name} beside the score", it) }
+            .getOrDefault(false)
 
-        manager.openFile(pdf, false)
+        if (!placed) manager.openFile(pdf, false)
+    }
+
+    /**
+     * The already-open window that should show [pdfPath], or null when a fresh split is needed.
+     *
+     * The same score wins over any other PDF, so recompiling one of two open scores updates its own pane
+     * instead of stealing the other's. Paths are compared rather than [VirtualFile] identities because
+     * LilyPond rewrites the file: the instance in the tab can be an earlier one for the same path.
+     *
+     * Recognising PDFs by extension and not by file type is deliberate — the PDF file type belongs to the
+     * third-party viewer plugin, so there is no type to compare against when it is missing.
+     */
+    internal fun <W> selectHostWindow(windows: List<W>, pdfPath: String, pathsIn: (W) -> List<String>): W? {
+        var windowWithSomePdf: W? = null
+        for (window in windows) {
+            val paths = pathsIn(window)
+            if (paths.any { it == pdfPath }) return window
+            if (windowWithSomePdf == null && paths.any { it.endsWith(".pdf", ignoreCase = true) }) {
+                windowWithSomePdf = window
+            }
+        }
+        return windowWithSomePdf
     }
 
     private fun openWithSystemViewer(pdf: Path) {
