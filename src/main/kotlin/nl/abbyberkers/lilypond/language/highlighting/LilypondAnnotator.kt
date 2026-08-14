@@ -31,7 +31,7 @@ class LilypondAnnotator : Annotator {
      * following the note.
      *
      * Only WORD tokens are treated as notes. Words in non-note modes (e.g. lyric mode) are emitted
-     * by the lexer as MODE_WORD, so syllables like `as` or a lyric comma are never colored.
+     * by the lexer as LYRICS_WORD, so syllables like `as` or a lyric comma are never colored.
      */
     private fun annotateNote(element: PsiElement, holder: AnnotationHolder) {
         if (isNoteWord(element)) {
