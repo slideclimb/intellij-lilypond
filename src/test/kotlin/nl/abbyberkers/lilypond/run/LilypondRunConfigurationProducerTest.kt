@@ -21,8 +21,16 @@ class LilypondRunConfigurationProducerTest : BasePlatformTestCase() {
         assertEquals("song.ly", configuration.name)
     }
 
-    fun testRefusesIncludeFiles() {
-        assertNull(produce(myFixture.configureByText("library.ily", "\\version \"2.24.0\"")))
+    /**
+     * An `.ily` file is an include by convention, but compiling one on its own is useful while that
+     * single file is being worked on.
+     */
+    fun testCreatesConfigurationForIncludeFiles() {
+        val configuration = produce(myFixture.configureByText("library.ily", "\\version \"2.24.0\""))
+
+        assertNotNull("No configuration was produced for an .ily file", configuration)
+        assertTrue(configuration!!.options.mainFilePath!!.endsWith("library.ily"))
+        assertEquals("library.ily", configuration.name)
     }
 
     fun testRefusesOtherFileTypes() {

@@ -15,6 +15,20 @@ object LilypondPaths {
     const val DEFAULT_OUTPUT_DIRECTORY = "$PROJECT_DIR/out"
 
     /**
+     * The extensions LilyPond can be asked to compile, longest first so that stripping one off a name
+     * is unambiguous.
+     */
+    val COMPILABLE_EXTENSIONS = listOf(".ily", ".ly")
+
+    /**
+     * Whether a file name is one this plugin offers to compile. `.ily` files are includes by
+     * convention, but compiling one on its own is useful while that single file is being worked on,
+     * so they are offered too.
+     */
+    fun isCompilable(fileName: String): Boolean =
+        COMPILABLE_EXTENSIONS.any { fileName.endsWith(it, ignoreCase = true) }
+
+    /**
      * Resolves a stored path to an absolute, system-independent one.
      *
      * [fallbackBase] stands in for [projectBasePath] when there is none: `Project.getBasePath()` is
@@ -55,7 +69,7 @@ object LilypondPaths {
      */
     fun basenameOf(mainFilePath: String): String {
         val name = normalize(mainFilePath).substringAfterLast('/')
-        for (extension in listOf(".ily", ".ly")) {
+        for (extension in COMPILABLE_EXTENSIONS) {
             if (name.endsWith(extension, ignoreCase = true)) return name.dropLast(extension.length)
         }
         return name

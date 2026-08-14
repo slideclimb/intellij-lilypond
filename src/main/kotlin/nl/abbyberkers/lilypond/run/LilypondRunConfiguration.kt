@@ -92,7 +92,7 @@ class LilypondRunConfiguration(project: Project, factory: ConfigurationFactory, 
             throw RuntimeConfigurationError(LilypondBundle.message("run.error.custom.command.missing"))
         }
 
-        if (!mainFile.endsWith(".ly", ignoreCase = true) && !mainFile.endsWith(".ily", ignoreCase = true)) {
+        if (!LilypondPaths.isCompilable(mainFile)) {
             throw RuntimeConfigurationWarning(LilypondBundle.message("run.error.main.file.wrong.type", mainFile))
         }
         if (options.pdfViewer == PdfViewerMode.CUSTOM_COMMAND &&

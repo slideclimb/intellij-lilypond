@@ -21,6 +21,8 @@
 
         <configurationType implementation="nl.abbyberkers.lilypond.run.LilypondRunConfigurationType"/>
         <runConfigurationProducer implementation="nl.abbyberkers.lilypond.run.LilypondRunConfigurationProducer"/>
+        <runLineMarkerContributor language="LilyPond"
+                                  implementationClass="nl.abbyberkers.lilypond.run.LilypondRunLineMarkerContributor"/>
         <notificationGroup id="LilyPond"
                            displayType="BALLOON"
                            bundle="messages.LilypondBundle"

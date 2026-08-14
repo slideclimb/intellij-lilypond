@@ -3,13 +3,14 @@ package nl.abbyberkers.lilypond.run
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.LazyRunConfigurationProducer
 import com.intellij.execution.configurations.ConfigurationFactory
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.psi.PsiElement
 import nl.abbyberkers.lilypond.language.LilypondFileType
 import nl.abbyberkers.lilypond.run.core.LilypondPaths
 
-class LilypondRunConfigurationProducer : LazyRunConfigurationProducer<LilypondRunConfiguration>() {
+class LilypondRunConfigurationProducer : LazyRunConfigurationProducer<LilypondRunConfiguration>(), DumbAware {
     override fun getConfigurationFactory(): ConfigurationFactory = LilypondRunConfigurationType.instance
 
     /**
@@ -25,8 +26,7 @@ class LilypondRunConfigurationProducer : LazyRunConfigurationProducer<LilypondRu
         val psiFile = context.psiLocation?.containingFile ?: return false
         val virtualFile = psiFile.virtualFile ?: return false
         if (virtualFile.fileType != LilypondFileType) return false
-        // .ily files are includes rather than entry points; compiling one is rarely what is meant.
-        if (!virtualFile.name.endsWith(".ly", ignoreCase = true)) return false
+        if (!LilypondPaths.isCompilable(virtualFile.name)) return false
 
         configuration.options.mainFilePath = LilypondPaths.collapse(virtualFile.path, context.project.basePath)
         configuration.setGeneratedName()
