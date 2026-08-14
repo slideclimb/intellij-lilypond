@@ -66,7 +66,6 @@ tasks.named<GenerateParserTask>("generateParser") {
 // Make compilation depend on generation so plain `./gradlew build` (and CI) always regenerates.
 tasks.named("compileKotlin") { dependsOn("generateLexer", "generateParser") }
 tasks.named("compileJava") { dependsOn("generateLexer", "generateParser") }
-tasks.named("runKtlintCheckOverMainSourceSet") { dependsOn("generateLexer", "generateParser") }
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/version_catalogs.html
 dependencies {
@@ -215,8 +214,22 @@ intellijPlatformTesting {
         // the file editor it registers for PDFs. This task makes that path testable by hand, while
         // plain `runIde` exercises the fallback to the system viewer.
         register("runIdeWithPdfViewer") {
+            task {
+                // The PDF viewer declares that it requires a restart, but the platform's default plugin
+                // hot-reload cycles it anyway once the freshly written sandbox jars hit the VFS, which
+                // leaves the PDF editor registered but blank.
+                systemProperties["idea.auto.reload.plugins"] = false
+                systemProperties["ide.browser.jcef.enabled"] = true
+                systemProperties["pdf.viewer.debug"] = true
+                systemProperties["ide.browser.jcef.log.level"] = "info"
+            }
+
             plugins {
-                compatiblePlugin("com.firsttimeinforever.intellij.pdf.viewer.intellij-pdf-viewer")
+                // Pinned, not compatiblePlugin(): 0.18.0 bundles pdf.js 5, which calls the static URL.parse().
+                // That landed in Chromium 126, but the JCEF in 2025.2 is Chromium 122, so the web view throws
+                // on load and every PDF renders blank. 0.17.x still bundles pdf.js 4.10.38.
+                // Revisit once platformVersion moves to a JCEF past 126.
+                plugin("com.firsttimeinforever.intellij.pdf.viewer.intellij-pdf-viewer", "0.17.2")
             }
         }
     }
