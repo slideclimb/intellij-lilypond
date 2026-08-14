@@ -45,7 +45,7 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
   }
 
   // Non-note input modes (currently lyric mode) reinterpret bare words as syllables, not
-  // notes, so their words are emitted as MODE_WORD to keep them out of note highlighting.
+  // notes, so their words are emitted as LYRICS_WORD to keep them out of note highlighting.
   // Tracked with instance fields like the scheme nesting above; the FlexAdapter only
   // checkpoints yystate(), so this is not restored on a mid-file incremental relex — the
   // same known tradeoff the scheme fields already carry.
@@ -155,7 +155,7 @@ SCM_LINE_COMMENT=;.*
   {WS}                   { return WHITE_SPACE; }
   {BLOCK_COMMENT}        { return BLOCK_COMMENT; }
   {LINE_COMMENT}         { return LINE_COMMENT; }
-  {WORD}                 { return suppressBraceStack.isEmpty() ? WORD : MODE_WORD; }
+  {WORD}                 { return suppressBraceStack.isEmpty() ? WORD : LYRICS_WORD; }
 }
 
 <SCHEME> {
