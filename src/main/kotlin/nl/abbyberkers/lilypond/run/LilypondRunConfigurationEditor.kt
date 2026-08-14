@@ -35,8 +35,7 @@ class LilypondRunConfigurationEditor(private val project: Project) : SettingsEdi
     private val executableField = TextFieldWithBrowseButton().apply {
         addBrowseFolderListener(
             project,
-            FileChooserDescriptorFactory.createSingleFileOrExecutableAppDescriptor()
-                .withTitle(LilypondBundle.message("run.settings.executable.chooser.title")),
+            FileChooserDescriptorFactory.singleFileOrAppBundle().withTitle(LilypondBundle.message("run.settings.executable.chooser.title")),
         )
         // Without this the placeholder hides on focus, which is when the user most wants to read it.
         TextComponentEmptyText.setupPlaceholderVisibility(textField)
@@ -45,8 +44,7 @@ class LilypondRunConfigurationEditor(private val project: Project) : SettingsEdi
     private val outputDirectoryField = TextFieldWithBrowseButton().apply {
         addBrowseFolderListener(
             project,
-            FileChooserDescriptorFactory.createSingleFolderDescriptor()
-                .withTitle(LilypondBundle.message("run.settings.output.directory.chooser.title")),
+            FileChooserDescriptorFactory.singleDir().withTitle(LilypondBundle.message("run.settings.output.directory.chooser.title")),
         )
     }
 
