@@ -9,6 +9,7 @@ import com.intellij.execution.configurations.RuntimeConfigurationWarning
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
 import nl.abbyberkers.lilypond.LilypondBundle
 import nl.abbyberkers.lilypond.run.core.CustomViewerCommand
 import nl.abbyberkers.lilypond.run.core.LilypondCompileRequest
@@ -31,6 +32,16 @@ class LilypondRunConfiguration(project: Project, factory: ConfigurationFactory, 
 
     override fun suggestedName(): String? =
         options.mainFilePath?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
+
+    /**
+     * Whether this configuration compiles the file at [path], which must be absolute.
+     *
+     * The stored path is collapsed to `{projectDir}/...`, so it has to be expanded to compare.
+     */
+    fun compiles(path: String): Boolean {
+        val configured = LilypondPaths.expand(options.mainFilePath, project.basePath) ?: return false
+        return FileUtil.pathsEqual(configured, path)
+    }
 
     /**
      * Resolves every stored placeholder against the project.
