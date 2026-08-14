@@ -5,14 +5,9 @@ import com.intellij.execution.process.ProcessListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ModuleRootModificationUtil
-import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VirtualFile
 import nl.abbyberkers.lilypond.run.core.LilypondCompileRequest
 import nl.abbyberkers.lilypond.run.core.LilypondOutputs
 import nl.abbyberkers.lilypond.run.pdf.PdfOpener
@@ -42,7 +37,6 @@ class LilypondPostRunListener(
         // Synchronous: we hold no locks here, and an asynchronous refresh would race the open below.
         val outputDirectoryFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(outputDirectory)
         outputDirectoryFile?.refresh(false, true)
-        if (outputDirectoryFile != null) excludeFromProject(outputDirectoryFile)
 
         if (viewerSettings.mode == PdfViewerMode.NONE) return
 
@@ -79,29 +73,6 @@ class LilypondPostRunListener(
 
         if (produced.size > 1) log.info("LilyPond produced $produced, opening the first")
         return produced.firstOrNull()
-    }
-
-    /**
-     * Keeps generated scores out of the index. Skipped when the directory is already excluded, so a
-     * user who deliberately un-excluded it is not overruled on the next run.
-     */
-    private fun excludeFromProject(outputDirectory: VirtualFile) {
-        val target = ReadAction.compute<Pair<Module, VirtualFile>?, RuntimeException> {
-            val index = ProjectFileIndex.getInstance(project)
-            if (index.isExcluded(outputDirectory)) return@compute null
-            val module = index.getModuleForFile(outputDirectory, false) ?: return@compute null
-            val contentRoot = index.getContentRootForFile(outputDirectory) ?: return@compute null
-            module to contentRoot
-        } ?: return
-
-        WriteAction.runAndWait<RuntimeException> {
-            ModuleRootModificationUtil.updateExcludedFolders(
-                target.first,
-                target.second,
-                emptyList(),
-                listOf(outputDirectory.url),
-            )
-        }
     }
 
     companion object {
