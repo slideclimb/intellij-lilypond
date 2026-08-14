@@ -3,7 +3,7 @@ package nl.abbyberkers.lilypond.run.pdf
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.VirtualFile
@@ -31,7 +31,7 @@ object PdfOpener {
 
             PdfViewerMode.BUILT_IN ->
                 if (virtualFile != null && builtInAvailable) {
-                    FileEditorManager.getInstance(project).openFile(virtualFile, false)
+                    openInEditor(project, virtualFile)
                 } else {
                     LilypondNotifications.builtInPdfViewerUnavailable(project)
                     openWithSystemViewer(pdf)
@@ -41,6 +41,26 @@ object PdfOpener {
 
             PdfViewerMode.CUSTOM_COMMAND -> runCustomCommand(settings.customCommand, pdf)
         }
+    }
+
+    /**
+     * Not requesting focus is load-bearing: `openInRightSplit` splits whichever window currently has
+     * focus, so with focus in the PDF pane the next compile would split that pane, nesting splitters
+     * without end. Leaving focus in the score keeps the score on the left and makes later runs reuse
+     * the same right-hand pane.
+     *
+     * The [runCatching] is not defensive noise: `splitters` throws outright in headless tests
+     * (`TestEditorManagerImpl`), and `openInRightSplit` returns null when there is no window to split from.
+     * A plain tab is the right answer to both.
+     */
+    private fun openInEditor(project: Project, pdf: VirtualFile) {
+        val manager = FileEditorManagerEx.getInstanceEx(project)
+        val split = runCatching { manager.splitters.openInRightSplit(pdf, false) }
+            .onFailure { log.warn("Could not open ${pdf.name} in a split", it) }
+            .getOrNull()
+        if (split != null) return
+
+        manager.openFile(pdf, false)
     }
 
     private fun openWithSystemViewer(pdf: Path) {

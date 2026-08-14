@@ -48,7 +48,7 @@ class LilypondPostRunListener(
 
         val pdf = selectPdf(outputDirectory) ?: return
         val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(pdf)
-        val builtInAvailable = virtualFile != null &&
+        val builtInAvailable = virtualFile != null && viewerSettings.mode == PdfViewerMode.BUILT_IN &&
             ReadAction.compute<Boolean, RuntimeException> {
                 PdfViewerAvailability.isBuiltInViewerAvailable(project, virtualFile)
             }
