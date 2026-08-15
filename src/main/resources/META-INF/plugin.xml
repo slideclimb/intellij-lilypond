@@ -37,7 +37,5 @@
     <projectListeners>
         <listener class="nl.abbyberkers.lilypond.run.LilypondSelectedConfigurationSwitcher"
                   topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
-        <listener class="nl.abbyberkers.lilypond.run.LilypondTemporaryConfigurationKeeper"
-                  topic="com.intellij.execution.RunManagerListener"/>
     </projectListeners>
 </idea-plugin>
