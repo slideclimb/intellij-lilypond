@@ -16,8 +16,26 @@ import nl.abbyberkers.lilypond.language.psi.LilypondTypes
  * `[ae]s(?:es)?` covers the contracted flats `es`/`as`/`eses`/`ases`, which elide the note
  * letter's own vowel and so are not a letter plus an accidental. LilyPond accepts them
  * alongside the uncontracted `ees`/`aes`/`eeses`/`aeses`, and they are the common spelling.
+ *
+ * Everything a note may carry after its duration — articulations, fingerings, a tie, a tremolo
+ * subdivision — is matched but not captured, because those characters are word characters to the
+ * lexer and so land in the same token (`c4-.` lexes as WORD `c4-` plus DOT). They still have to be
+ * accounted for: the match is anchored at both ends, so an unmatched tail leaves the whole note
+ * uncolored rather than just the tail. Only pitch and duration are captured, and only those two
+ * are painted.
  */
-private val NOTE = Regex("^(?<pitch>[a-g](?:isis|eses|is|es|ih|eh)?|[ae]s(?:es)?|[rRsq])(?<duration>\\d+)?$")
+private val NOTE =
+    Regex(
+        "^(?<pitch>[a-g](?:isis|eses|is|es|ih|eh)?|[ae]s(?:es)?|[rRsq])" +
+            // A cautionary accidental sits between pitch and duration: `cis?4`. Its `!` sibling
+            // is not a word character, so `cis!4` already splits into tokens and never lands here.
+            "\\??" +
+            "(?<duration>\\d+)?" +
+            // Articulation/direction (`-` `^` `_`), tie (`~`), tremolo (`:8`), fingering (`-1`),
+            // and the `-+` stopped shorthand. The shorthands that are not word characters
+            // (`-.`, `->`, `-!`) end the token instead, leaving a bare `-` here.
+            "[-^_~:?+\\d]*$",
+    )
 
 class LilypondAnnotator : Annotator {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {

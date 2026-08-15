@@ -61,8 +61,27 @@ class LilypondHighlightingTest : BasePlatformTestCase() {
         assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4*2/3 }"))
     }
 
+    fun testArticulationsDoNotSuppressColoring() {
+        // Each of these keeps the trailing character inside the note's own WORD token.
+        assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4-. }"))
+        assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4-- }"))
+        assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4-+ }"))
+        assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4^\\marcato }"))
+        assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4_\"text\" }"))
+        assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4~ }"))
+        assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4:8 }"))
+        assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4-1 }"))
+        // A cautionary accidental comes between the pitch and the duration.
+        assertEquals(listOf(Painted("cis", PITCH), Painted("4", NUMBER)), notePainting("{ cis?4 }"))
+        // An articulation on a note without a duration still leaves the pitch colored.
+        assertEquals(listOf(Painted("c", PITCH)), notePainting("{ c~ }"))
+    }
+
     fun testNonNoteWordNotColored() {
         assertEmpty(notePainting("\\clef treble").filter { it.key == PITCH })
+        // A word that merely starts like a note is not one: the tail is not articulation.
+        assertEmpty(notePainting("\\repeat unfold 2 { d4 }").filter { it.text == "unfold" })
+        assertEmpty(notePainting("{ as-is }").filter { it.key == PITCH })
     }
 
     fun testAssignmentNameNotColored() {
