@@ -111,12 +111,11 @@ object PdfOpener {
     }
 
     private fun runCustomCommand(customCommand: String?, pdf: Path) {
-        val command = CustomViewerCommand.buildArgv(customCommand, pdf.toString())
-        if (command == null) {
+        if (customCommand.isNullOrEmpty()) {
             log.warn("No custom PDF viewer command configured, not opening ${pdf.fileName}")
             return
         }
-        runDetached(command) {}
+        runDetached(CustomViewerCommand.buildArgVector(customCommand, pdf.toString())) {}
     }
 
     /**

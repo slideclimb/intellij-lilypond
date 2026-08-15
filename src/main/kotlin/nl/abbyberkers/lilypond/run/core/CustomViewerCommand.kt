@@ -12,10 +12,8 @@ object CustomViewerCommand {
      *
      * @return null when the command is blank.
      */
-    fun buildArgv(command: String?, pdfPath: String): List<String>? {
-        val tokens = ParametersListUtil.parse(command.orEmpty())
-        if (tokens.isEmpty()) return null
-
+    fun buildArgVector(command: String, pdfPath: String): List<String> {
+        val tokens = ParametersListUtil.parse(command)
         val substituted = tokens.map { it.replace(PLACEHOLDER, pdfPath) }
         return if (tokens.none { it.contains(PLACEHOLDER) }) substituted + pdfPath else substituted
     }
