@@ -5,6 +5,7 @@
     <vendor>Abby Berkers</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
 
     <resource-bundle>messages.LilypondBundle</resource-bundle>
 
@@ -18,5 +19,19 @@
         <lang.syntaxHighlighterFactory language="LilyPond" implementationClass="nl.abbyberkers.lilypond.language.highlighting.LilypondSyntaxHighlighterFactory"/>
         <annotator language="LilyPond" implementationClass="nl.abbyberkers.lilypond.language.highlighting.LilypondAnnotator"/>
         <colorSettingsPage implementation="nl.abbyberkers.lilypond.language.highlighting.LilypondColorSettingsPage"/>
+
+        <configurationType implementation="nl.abbyberkers.lilypond.run.LilypondRunConfigurationType"/>
+        <runConfigurationProducer implementation="nl.abbyberkers.lilypond.run.LilypondRunConfigurationProducer"/>
+        <runLineMarkerContributor language="LilyPond"
+                                  implementationClass="nl.abbyberkers.lilypond.run.LilypondRunLineMarkerContributor"/>
+        <notificationGroup id="LilyPond"
+                           displayType="BALLOON"
+                           bundle="messages.LilypondBundle"
+                           key="notification.group.lilypond"/>
     </extensions>
+
+    <projectListeners>
+        <listener class="nl.abbyberkers.lilypond.run.LilypondSelectedConfigurationSwitcher"
+                  topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+    </projectListeners>
 </idea-plugin>
