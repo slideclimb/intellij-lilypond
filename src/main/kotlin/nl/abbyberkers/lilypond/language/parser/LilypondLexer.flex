@@ -76,6 +76,11 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
 WS=\s+
 DIGIT=[0-9]
 
+// A run of digits not attached to a note letter, e.g. the duration in `c,16` or `<c e>16`
+// (the octave mark and the `>` end the preceding WORD). Must be declared before {WORD},
+// which matches the same text: on equal match length JFlex prefers the earlier rule.
+NUMBER={DIGIT}+
+
 // A LilyPond command/identifier reference: a backslash followed by letters. Command
 // names contain no digits, so a lone backslash (\\, \!, ...) falls through to BACKSLASH.
 COMMAND_TOKEN=\\[a-zA-Z]+
@@ -83,9 +88,12 @@ COMMAND_TOKEN=\\[a-zA-Z]+
 // A whole string literal, including \" and \\ escapes; may span newlines.
 STRING_LITERAL=\"([^\"\\]|\\[^])*\"
 
-// A bare run of "word" characters (note names, durations, etc.). Excludes every char
-// that carries its own token. Unchanged from the original lexer to preserve tokenization.
-WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
+// A bare run of "word" characters (note names, durations, etc.). Excludes `*` and `/` so a
+// duration multiplier splits into its own tokens (`R1*15` -> WORD STAR DIGIT, `c4*2/3` ->
+// WORD STAR DIGIT SLASH DIGIT); without that the whole run is one WORD and none of it can be
+// recognised as a note. Other chars that carry their own token (`-`, `^`, `:`, ...) are still
+// word chars here, so articulations stay fused into the note word.
+WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#*/]+
 
 // `~` is JFlex's "up to and including" operator: match `%{` then everything up to the
 // FIRST `%}`. A plain `[^]*%}` would be maximal-munch (greedy) and swallow intervening code
@@ -151,7 +159,7 @@ SCM_LINE_COMMENT=;.*
   "("                    { return LEFT_PAREN; }
   ")"                    { return RIGHT_PAREN; }
 
-  {DIGIT}                { return DIGIT; }
+  {NUMBER}               { return DIGIT; }
   {WS}                   { return WHITE_SPACE; }
   {BLOCK_COMMENT}        { return BLOCK_COMMENT; }
   {LINE_COMMENT}         { return LINE_COMMENT; }

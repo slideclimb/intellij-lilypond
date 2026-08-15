@@ -12,8 +12,12 @@ import nl.abbyberkers.lilypond.language.psi.LilypondTypes
  * Default (Dutch) note names — a letter with an optional accidental — plus rests (r, R),
  * spacer (s) and chord repeat (q), followed by an optional attached duration. Accidentals
  * are listed longest-first so `isis`/`eses` win over `is`/`es`.
+ *
+ * `[ae]s(?:es)?` covers the contracted flats `es`/`as`/`eses`/`ases`, which elide the note
+ * letter's own vowel and so are not a letter plus an accidental. LilyPond accepts them
+ * alongside the uncontracted `ees`/`aes`/`eeses`/`aeses`, and they are the common spelling.
  */
-private val NOTE = Regex("^(?<pitch>[a-g](?:isis|eses|is|es|ih|eh)?|[rRsq])(?<duration>\\d+)?$")
+private val NOTE = Regex("^(?<pitch>[a-g](?:isis|eses|is|es|ih|eh)?|[ae]s(?:es)?|[rRsq])(?<duration>\\d+)?$")
 
 class LilypondAnnotator : Annotator {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {

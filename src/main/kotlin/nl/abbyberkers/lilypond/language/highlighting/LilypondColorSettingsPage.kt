@@ -18,8 +18,10 @@ class LilypondColorSettingsPage : ColorSettingsPage {
 
     override fun getDemoText(): String = DEMO_TEXT
 
-    // Pitch and octave are painted by LilypondAnnotator, not the lexer highlighter, so the
-    // demo text tags them explicitly to preview those colors here.
+    // The preview only runs the lexer highlighter, never LilypondAnnotator, so everything the
+    // annotator paints has to be tagged explicitly in the demo text: pitch, octave, and a
+    // duration fused into the note word (`c4`). A detached duration (the `2` of `g,2`) is a
+    // DIGIT token that the lexer highlighter colors on its own, so it needs no tag.
     override fun getAdditionalHighlightingTagToDescriptorMap(): Map<String, TextAttributesKey> = DEMO_TAGS
 
     override fun getAttributeDescriptors(): Array<AttributesDescriptor> = DESCRIPTORS
@@ -46,6 +48,7 @@ private val DESCRIPTORS = arrayOf(
 private val DEMO_TAGS = mapOf(
     "pitch" to LilypondSyntaxHighlighter.PITCH,
     "octave" to LilypondSyntaxHighlighter.OCTAVE,
+    "duration" to LilypondSyntaxHighlighter.NUMBER,
 )
 
 private val DEMO_TEXT =
@@ -57,7 +60,7 @@ private val DEMO_TEXT =
 
     melody = \relative <pitch>c</pitch><octave>'</octave> {
       \clef "treble"
-      <pitch>c</pitch>4 <pitch>d</pitch>8 <pitch>e</pitch>16 <pitch>f</pitch> | <pitch>g</pitch><octave>,</octave>2 <pitch>r</pitch>2
+      <pitch>c</pitch><duration>4</duration> <pitch>d</pitch><duration>8</duration> <pitch>e</pitch><duration>16</duration> <pitch>f</pitch> | <pitch>g</pitch><octave>,</octave>16 <pitch>r</pitch><duration>2</duration>
     }
 
     \score {

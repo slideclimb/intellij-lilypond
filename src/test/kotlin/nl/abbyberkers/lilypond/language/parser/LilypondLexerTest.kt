@@ -26,6 +26,35 @@ class LilypondLexerTest {
         assertEquals(LilypondTypes.WORD, tokenType("melody = \\relative c' { cis16 }", "cis16"))
     }
 
+    /**
+     * A duration detached from its note letter (by an octave mark, a chord's `>`, ...) must be one
+     * DIGIT token: DIGIT is what the syntax highlighter colors as a number, and a multi-digit run
+     * would otherwise be a WORD and stay uncolored, so `c,8` was highlighted but `c,16` was not.
+     */
+    @Test
+    fun detachedDurationIsOneDigitToken() {
+        assertEquals(LilypondTypes.DIGIT, tokenType("{ c,16 }", "16"))
+        assertEquals(LilypondTypes.DIGIT, tokenType("{ c'16 }", "16"))
+        assertEquals(LilypondTypes.DIGIT, tokenType("{ <c e>16 }", "16"))
+        assertEquals(LilypondTypes.DIGIT, tokenType("\\tempo 4 = 120", "120"))
+        // A digit run followed by letters is still a single WORD, as before.
+        assertEquals(LilypondTypes.WORD, tokenType("{ 16a }", "16a"))
+    }
+
+    /**
+     * A duration multiplier must split off the note word instead of being swallowed by it, so the
+     * note stays recognisable and the multiplier's numbers are DIGIT tokens.
+     */
+    @Test
+    fun durationMultiplierSplitsIntoOwnTokens() {
+        assertEquals(LilypondTypes.WORD, tokenType("{ R1*15 }", "R1"))
+        assertEquals(LilypondTypes.STAR, tokenType("{ R1*15 }", "*"))
+        assertEquals(LilypondTypes.DIGIT, tokenType("{ R1*15 }", "15"))
+        assertEquals(LilypondTypes.SLASH, tokenType("{ c4*2/3 }", "/"))
+        assertEquals(LilypondTypes.DIGIT, tokenType("{ c4*2/3 }", "3"))
+        assertEquals(LilypondTypes.DIGIT, tokenType("\\time 3/4", "3"))
+    }
+
     @Test
     fun wordsAreModeWordInsideLyricMode() {
         assertEquals(LilypondTypes.LYRICS_WORD, tokenType("\\lyricmode { as a be }", "as"))

@@ -34,12 +34,31 @@ class LilypondHighlightingTest : BasePlatformTestCase() {
     }
 
     fun testOctaveMarksColored() {
-        // The 8 is a standalone DIGIT token (lexer-colored), so only pitch + octave are annotated.
+        // The duration is a standalone DIGIT token here (lexer-colored, see
+        // LilypondLexerTest.detachedDurationIsOneDigitToken), so only pitch + octave are annotated.
         assertEquals(listOf(Painted("gis", PITCH), Painted("'", OCTAVE)), notePainting("{ gis'8 }"))
+        assertEquals(listOf(Painted("gis", PITCH), Painted("'", OCTAVE)), notePainting("{ gis'16 }"))
         assertEquals(
             listOf(Painted("c", PITCH), Painted("'", OCTAVE), Painted("'", OCTAVE)),
             notePainting("{ c'' }"),
         )
+    }
+
+    fun testContractedFlatNames() {
+        assertEquals(listOf(Painted("es", PITCH), Painted("16", NUMBER)), notePainting("{ es16 }"))
+        assertEquals(listOf(Painted("as", PITCH), Painted("8", NUMBER)), notePainting("{ as8 }"))
+        assertEquals(listOf(Painted("eses", PITCH)), notePainting("{ eses }"))
+        assertEquals(listOf(Painted("ases", PITCH), Painted("4", NUMBER)), notePainting("{ ases4 }"))
+        // The uncontracted spellings, a letter plus an accidental, keep working.
+        assertEquals(listOf(Painted("ees", PITCH), Painted("16", NUMBER)), notePainting("{ ees16 }"))
+        assertEquals(listOf(Painted("aeses", PITCH)), notePainting("{ aeses }"))
+    }
+
+    fun testNoteWithDurationMultiplier() {
+        // The multiplier's own numbers are DIGIT tokens (lexer-colored); the note word before it
+        // is what the annotator has to keep recognising.
+        assertEquals(listOf(Painted("R", PITCH), Painted("1", NUMBER)), notePainting("{ R1*15 }"))
+        assertEquals(listOf(Painted("c", PITCH), Painted("4", NUMBER)), notePainting("{ c4*2/3 }"))
     }
 
     fun testNonNoteWordNotColored() {

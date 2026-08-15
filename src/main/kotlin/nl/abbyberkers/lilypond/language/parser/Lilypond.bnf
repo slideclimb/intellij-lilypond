@@ -15,7 +15,7 @@
   tokens = [
     BACKSLASH='\'
     COMMAND_TOKEN="regexp:\\[a-zA-Z]+"
-    DIGIT="regexp:\d"
+    DIGIT="regexp:\d+"
     DOT="."
     COMMA=","
     SINGLE_QUOTE="'"
@@ -60,11 +60,11 @@
     SCM_BLOCK_COMMENT="regexp:#!\{(.|\n)*!#"
     SCM_LINE_COMMENT="regexp:;.*"
 
-    WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+"
+    WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#*/]+"
 
     // A word inside a non-note input mode (e.g. lyric mode): same shape as WORD, but the
     // lexer emits this type so note highlighting can tell syllables from notes.
-    LYRICS_WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+"
+    LYRICS_WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#*/]+"
   ]
 }
 
