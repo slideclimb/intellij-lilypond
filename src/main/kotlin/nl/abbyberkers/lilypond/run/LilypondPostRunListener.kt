@@ -43,9 +43,11 @@ class LilypondPostRunListener(
         val pdf = selectPdf(outputDirectory) ?: return
         val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(pdf)
         val builtInAvailable = virtualFile != null && viewerSettings.mode == PdfViewerMode.BUILT_IN &&
-            ReadAction.compute<Boolean, RuntimeException> {
+            // nonBlocking rather than the deprecated ReadAction.compute, and rather than its suggested
+            // replacement computeBlocking, which only exists from 261 onwards while this plugin targets 252.
+            ReadAction.nonBlocking<Boolean> {
                 PdfViewerAvailability.isBuiltInViewerAvailable(project, virtualFile)
-            }
+            }.executeSynchronously()
 
         ApplicationManager.getApplication().invokeLater(
             { PdfOpener.open(project, pdf, virtualFile, viewerSettings, builtInAvailable) },

@@ -6,12 +6,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.RawCommandLineEditor
-import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.components.TextComponentEmptyText
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.FormBuilder
 import com.intellij.util.ui.components.BorderLayoutPanel
@@ -51,7 +51,9 @@ class LilypondRunConfigurationEditor(private val project: Project) : SettingsEdi
     private val extraArgumentsField = RawCommandLineEditor()
 
     private val pdfViewerCombo = ComboBox(PdfViewerMode.entries.toTypedArray()).apply {
-        renderer = SimpleListCellRenderer.create("") { it.displayName }
+        // The nullValue overload of textListCellRenderer is @ApiStatus.Internal before 262, so the null is
+        // handled here instead; the combo has a fixed non-empty model, so this only guards the type.
+        renderer = textListCellRenderer<PdfViewerMode?> { it?.displayName.orEmpty() }
         addActionListener { syncCustomCommandEnabled() }
     }
 
