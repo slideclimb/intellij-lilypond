@@ -4,7 +4,6 @@ import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
-import com.intellij.openapi.options.advanced.AdvancedSettings
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 
@@ -23,7 +22,6 @@ import com.intellij.openapi.vfs.VirtualFile
  */
 class LilypondSelectedConfigurationSwitcher(private val project: Project) : FileEditorManagerListener {
     override fun selectionChanged(event: FileEditorManagerEvent) {
-        if (!AdvancedSettings.getBoolean(FOLLOW_SELECTED_FILE)) return
         val file = event.newFile ?: return
         val runManager = RunManager.getInstance(project)
         val match = findConfigurationFor(runManager, file) ?: return
@@ -34,8 +32,4 @@ class LilypondSelectedConfigurationSwitcher(private val project: Project) : File
         runManager.getConfigurationSettingsList(LilypondRunConfigurationType.instance).firstOrNull {
             (it.configuration as? LilypondRunConfiguration)?.compiles(file.path) == true
         }
-
-    companion object {
-        private const val FOLLOW_SELECTED_FILE = "lilypond.follow.selected.file"
-    }
 }
