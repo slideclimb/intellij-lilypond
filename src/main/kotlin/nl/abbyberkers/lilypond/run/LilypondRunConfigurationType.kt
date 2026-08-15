@@ -6,6 +6,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
 import nl.abbyberkers.lilypond.LilypondBundle
 import nl.abbyberkers.lilypond.LilypondIcons
+import nl.abbyberkers.lilypond.run.pdf.PdfViewerAvailability
+import nl.abbyberkers.lilypond.run.pdf.PdfViewerMode
 
 /**
  * [SimpleConfigurationType] is both the type and its single factory, which is what makes the factory
@@ -18,8 +20,17 @@ class LilypondRunConfigurationType : SimpleConfigurationType(
     // Lazy because the type is constructed eagerly while extensions are registered.
     NotNullLazyValue.createValue { LilypondIcons.FILE },
 ) {
+    /**
+     * Every configuration made from a score is a clone of this template, so seeding the viewer here is what
+     * gives a machine without a PDF viewer plugin a working default instead of one that falls back and warns
+     * on every compile. A viewer chosen explicitly and saved is untouched — only the starting point moves.
+     */
     override fun createTemplateConfiguration(project: Project) =
-        LilypondRunConfiguration(project, this, LilypondBundle.message("run.configuration.name"))
+        LilypondRunConfiguration(project, this, LilypondBundle.message("run.configuration.name")).apply {
+            if (!PdfViewerAvailability.isBuiltInViewerAvailable(project)) {
+                options.pdfViewer = PdfViewerMode.SYSTEM_DEFAULT
+            }
+        }
 
     override fun getOptionsClass() = LilypondRunConfigurationOptions::class.java
 

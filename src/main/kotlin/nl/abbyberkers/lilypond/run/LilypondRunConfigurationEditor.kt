@@ -19,6 +19,7 @@ import nl.abbyberkers.lilypond.LilypondBundle
 import nl.abbyberkers.lilypond.language.LilypondFileType
 import nl.abbyberkers.lilypond.run.core.CustomViewerCommand
 import nl.abbyberkers.lilypond.run.core.LilypondPaths
+import nl.abbyberkers.lilypond.run.pdf.PdfViewerAvailability
 import nl.abbyberkers.lilypond.run.pdf.PdfViewerMode
 import javax.swing.JComponent
 
@@ -50,10 +51,16 @@ class LilypondRunConfigurationEditor(private val project: Project) : SettingsEdi
 
     private val extraArgumentsField = RawCommandLineEditor()
 
+    /**
+     * Sampled once per editor: installing a PDF viewer needs an IDE restart, so it cannot change while
+     * this dialog is open.
+     */
+    private val builtInAvailable = PdfViewerAvailability.isBuiltInViewerAvailable(project)
+
     private val pdfViewerCombo = ComboBox(PdfViewerMode.entries.toTypedArray()).apply {
         // The nullValue overload of textListCellRenderer is @ApiStatus.Internal before 262, so the null is
         // handled here instead; the combo has a fixed non-empty model, so this only guards the type.
-        renderer = textListCellRenderer<PdfViewerMode?> { it?.displayName.orEmpty() }
+        renderer = textListCellRenderer<PdfViewerMode?> { it?.let(::labelFor).orEmpty() }
         addActionListener { syncCustomCommandEnabled() }
     }
 
@@ -116,6 +123,17 @@ class LilypondRunConfigurationEditor(private val project: Project) : SettingsEdi
         options.pdfViewer = pdfViewerCombo.selectedItem as? PdfViewerMode ?: PdfViewerMode.BUILT_IN
         options.customViewerCommand = customViewerCommandField.text.trimToNull()
     }
+
+    /**
+     * The built-in viewer stays selectable while unavailable: the configuration may have been written on a
+     * machine that has the plugin, and clearing that choice here would lose it.
+     */
+    private fun labelFor(mode: PdfViewerMode): String =
+        if (mode == PdfViewerMode.BUILT_IN && !builtInAvailable) {
+            LilypondBundle.message("run.settings.pdf.viewer.builtin.not.installed", mode.displayName)
+        } else {
+            mode.displayName
+        }
 
     private fun syncCustomCommandEnabled() {
         customViewerCommandField.isEnabled = pdfViewerCombo.selectedItem == PdfViewerMode.CUSTOM_COMMAND

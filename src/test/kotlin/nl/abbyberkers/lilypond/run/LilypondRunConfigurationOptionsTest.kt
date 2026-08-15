@@ -55,13 +55,20 @@ class LilypondRunConfigurationOptionsTest : BasePlatformTestCase() {
         }
     }
 
-    fun testDefaultsAreNotSerialized() {
+    /**
+     * Keeping untouched values out of the XML is what makes a saved configuration small and portable.
+     *
+     * The viewer is put back to the property default first. On a machine with no PDF viewer plugin the
+     * template seeds the system viewer instead, and that deviation is meant to be written — a value that
+     * lived only in the template would not survive being reloaded elsewhere.
+     */
+    fun testUntouchedOptionsAreNotSerialized() {
         val element = Element("configuration")
-        newConfiguration().writeExternal(element)
+        newConfiguration().apply { options.pdfViewer = PdfViewerMode.BUILT_IN }.writeExternal(element)
         val xml = JDOMUtil.write(element)
 
-        assertFalse("Defaults should stay out of the XML:\n$xml", xml.contains("outputDirectory"))
-        assertFalse("Defaults should stay out of the XML:\n$xml", xml.contains("pdfViewer"))
+        assertFalse("Untouched options should stay out of the XML:\n$xml", xml.contains("outputDirectory"))
+        assertFalse("Untouched options should stay out of the XML:\n$xml", xml.contains("pdfViewer"))
     }
 
     fun testOutputDirectoryDefaultsToProjectOut() {

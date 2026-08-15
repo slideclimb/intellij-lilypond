@@ -23,6 +23,15 @@ class PdfViewerAvailabilityTest : BasePlatformTestCase() {
     }
 
     /**
+     * The file-less overload has to agree with the one taking a real PDF, since the dropdown label and the
+     * fallback that happens after a compile are meant to be the same answer. Its stand-in file has no
+     * content, so this is what would catch it being taken for an empty text file the IDE can happily open.
+     */
+    fun testReportsNoViewerWithoutAPdfToAskAbout() {
+        assertFalse(PdfViewerAvailability.isBuiltInViewerAvailable(project))
+    }
+
+    /**
      * The file is written to disk rather than into the in-memory fixture, because the file type is decided
      * partly by content and a PDF has to look binary to be treated as one.
      */
