@@ -6,7 +6,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.DumbAware
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
-import nl.abbyberkers.lilypond.run.core.LilypondPaths
+import nl.abbyberkers.lilypond.language.LilypondFileType
 
 /**
  * Puts a single run arrow in the gutter of the first line of every compilable LilyPond file.
@@ -24,8 +24,9 @@ class LilypondRunLineMarkerContributor : RunLineMarkerContributor(), DumbAware {
         val file = element.containingFile ?: return null
         if (PsiTreeUtil.firstChild(file) !== element) return null
         // `.ily` includes get an arrow too — compiling one on its own is useful while it is being
-        // worked on. LilypondRunConfigurationProducer accepts the same set through this predicate.
-        if (!LilypondPaths.isCompilable(file.name)) return null
+        // worked on — and they carry this file type, so the registration decides rather than a
+        // list here. LilypondRunConfigurationProducer accepts the same set the same way.
+        if (file.fileType != LilypondFileType) return null
 
         // The platform derives the tooltip from the actions themselves, so it reads "Run 'song.ly'"
         // without a bundle key of its own.

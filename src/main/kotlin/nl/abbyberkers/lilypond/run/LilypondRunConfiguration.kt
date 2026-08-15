@@ -7,10 +7,12 @@ import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.RuntimeConfigurationError
 import com.intellij.execution.configurations.RuntimeConfigurationWarning
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
 import nl.abbyberkers.lilypond.LilypondBundle
+import nl.abbyberkers.lilypond.language.LilypondFileType
 import nl.abbyberkers.lilypond.run.core.CustomViewerCommand
 import nl.abbyberkers.lilypond.run.core.LilypondCompileRequest
 import nl.abbyberkers.lilypond.run.core.LilypondPaths
@@ -103,7 +105,9 @@ class LilypondRunConfiguration(project: Project, factory: ConfigurationFactory, 
             throw RuntimeConfigurationError(LilypondBundle.message("run.error.custom.command.missing"))
         }
 
-        if (!LilypondPaths.isCompilable(mainFile)) {
+        // By name rather than through the VFS: checkConfiguration runs under a read lock and must not
+        // refresh, and the file may have appeared on disk since the last refresh.
+        if (FileTypeManager.getInstance().getFileTypeByFileName(mainFile.substringAfterLast('/')) != LilypondFileType) {
             throw RuntimeConfigurationWarning(LilypondBundle.message("run.error.main.file.wrong.type", mainFile))
         }
         if (options.pdfViewer == PdfViewerMode.CUSTOM_COMMAND &&

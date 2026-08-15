@@ -26,7 +26,6 @@ class LilypondRunConfigurationProducer : LazyRunConfigurationProducer<LilypondRu
         val psiFile = context.psiLocation?.containingFile ?: return false
         val virtualFile = psiFile.virtualFile ?: return false
         if (virtualFile.fileType != LilypondFileType) return false
-        if (!LilypondPaths.isCompilable(virtualFile.name)) return false
 
         configuration.options.mainFilePath = LilypondPaths.collapse(virtualFile.path, context.project.basePath)
         configuration.setGeneratedName()

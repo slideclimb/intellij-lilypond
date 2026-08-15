@@ -15,20 +15,6 @@ object LilypondPaths {
     const val DEFAULT_OUTPUT_DIRECTORY = "$PROJECT_DIR/out"
 
     /**
-     * The extensions LilyPond can be asked to compile, longest first so that stripping one off a name
-     * is unambiguous.
-     */
-    val COMPILABLE_EXTENSIONS = listOf(".ily", ".ly")
-
-    /**
-     * Whether a file name is one this plugin offers to compile. `.ily` files are includes by
-     * convention, but compiling one on its own is useful while that single file is being worked on,
-     * so they are offered too.
-     */
-    fun isCompilable(fileName: String): Boolean =
-        COMPILABLE_EXTENSIONS.any { fileName.endsWith(it, ignoreCase = true) }
-
-    /**
      * Resolves a stored path to an absolute, system-independent one.
      *
      * [fallbackBase] stands in for [projectBasePath] when there is none: `Project.getBasePath()` is
@@ -64,16 +50,17 @@ object LilypondPaths {
     }
 
     /**
-     * The `-o` basename for a source file: its name without the LilyPond extension. Only a trailing
-     * `.ly` or `.ily` is stripped, so `Chorale.No.4.ly` keeps its dots.
+     * The `-o` basename for a source file: its name with the extension dropped, so `Chorale.No.4.ly`
+     * keeps its dots and a name with no extension is left alone.
+     *
+     * Only the last extension goes, whichever it is, rather than a known LilyPond one: this is reached
+     * with a file already established as LilyPond, so the extension is by definition one of that type's,
+     * and matching a hardcoded list here would be a second place recording what plugin.xml registers.
      */
-    fun basenameOf(mainFilePath: String): String {
-        val name = normalize(mainFilePath).substringAfterLast('/')
-        for (extension in COMPILABLE_EXTENSIONS) {
-            if (name.endsWith(extension, ignoreCase = true)) return name.dropLast(extension.length)
-        }
-        return name
-    }
+    fun basenameOf(mainFilePath: String): String =
+        normalize(mainFilePath)
+            .substringAfterLast('/')
+            .let { it.substringBeforeLast('.', missingDelimiterValue = it) }
 
     fun parentOf(path: String): String {
         val normalized = normalize(path)
