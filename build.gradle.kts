@@ -66,7 +66,6 @@ tasks.named<GenerateParserTask>("generateParser") {
 // Make compilation depend on generation so plain `./gradlew build` (and CI) always regenerates.
 tasks.named("compileKotlin") { dependsOn("generateLexer", "generateParser") }
 tasks.named("compileJava") { dependsOn("generateLexer", "generateParser") }
-tasks.named("runKtlintCheckOverMainSourceSet") { dependsOn("generateLexer", "generateParser") }
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/version_catalogs.html
 dependencies {
@@ -170,6 +169,14 @@ ktlint {
     }
 }
 
+// The filter above skips every file in src/main/gen, but ktlint still takes the directory as a task
+// input because it is a source dir, and Gradle refuses to order a task against a directory another
+// task writes unless the dependency is declared. Running the generators first is the honest answer:
+// linting a half-written gen tree is exactly what the validation is there to prevent.
+tasks.matching { it.name.startsWith("runKtlint") }.configureEach {
+    dependsOn("generateLexer", "generateParser")
+}
+
 // Configure Gradle Kover Plugin - read more: https://kotlin.github.io/kotlinx-kover/gradle-plugin/#configuration-details
 kover {
     reports {
@@ -208,6 +215,29 @@ intellijPlatformTesting {
 
             plugins {
                 robotServerPlugin()
+            }
+        }
+
+        // The plugin has no compile-time dependency on the PDF viewer: it is found at runtime through
+        // the file editor it registers for PDFs. This task makes that path testable by hand, while
+        // plain `runIde` exercises the fallback to the system viewer.
+        register("runIdeWithPdfViewer") {
+            task {
+                // The PDF viewer declares that it requires a restart, but the platform's default plugin
+                // hot-reload cycles it anyway once the freshly written sandbox jars hit the VFS, which
+                // leaves the PDF editor registered but blank.
+                systemProperties["idea.auto.reload.plugins"] = false
+                systemProperties["ide.browser.jcef.enabled"] = true
+                systemProperties["pdf.viewer.debug"] = true
+                systemProperties["ide.browser.jcef.log.level"] = "info"
+            }
+
+            plugins {
+                // Pinned, not compatiblePlugin(): 0.18.0 bundles pdf.js 5, which calls the static URL.parse().
+                // That landed in Chromium 126, but the JCEF in 2025.2 is Chromium 122, so the web view throws
+                // on load and every PDF renders blank. 0.17.x still bundles pdf.js 4.10.38.
+                // Revisit once platformVersion moves to a JCEF past 126.
+                plugin("com.firsttimeinforever.intellij.pdf.viewer.intellij-pdf-viewer", "0.17.2")
             }
         }
     }
