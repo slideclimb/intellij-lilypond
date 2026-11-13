@@ -43,6 +43,12 @@ class LilypondSyntaxHighlighter : SyntaxHighlighterBase() {
         val LINE_COMMENT = createTextAttributesKey("LILYPOND_LINE_COMMENT", DefaultLanguageHighlighterColors.LINE_COMMENT)
         val BLOCK_COMMENT = createTextAttributesKey("LILYPOND_BLOCK_COMMENT", DefaultLanguageHighlighterColors.BLOCK_COMMENT)
         val NUMBER = createTextAttributesKey("LILYPOND_NUMBER", DefaultLanguageHighlighterColors.NUMBER)
+
+        // Applied by LilypondAnnotator to sub-ranges of a note word (pitch) and the octave
+        // marks (' ,) following it; they are not whole-token colors, so they map from no
+        // token type here.
+        val PITCH = createTextAttributesKey("LILYPOND_PITCH", DefaultLanguageHighlighterColors.IDENTIFIER)
+        val OCTAVE = createTextAttributesKey("LILYPOND_OCTAVE", DefaultLanguageHighlighterColors.OPERATION_SIGN)
         val BRACES = createTextAttributesKey("LILYPOND_BRACES", DefaultLanguageHighlighterColors.BRACES)
         val BRACKETS = createTextAttributesKey("LILYPOND_BRACKETS", DefaultLanguageHighlighterColors.BRACKETS)
         val PARENTHESES = createTextAttributesKey("LILYPOND_PARENTHESES", DefaultLanguageHighlighterColors.PARENTHESES)

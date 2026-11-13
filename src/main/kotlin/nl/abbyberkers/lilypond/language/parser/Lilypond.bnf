@@ -15,7 +15,7 @@
   tokens = [
     BACKSLASH='\'
     COMMAND_TOKEN="regexp:\\[a-zA-Z]+"
-    DIGIT="regexp:\d"
+    DIGIT="regexp:\d+"
     DOT="."
     COMMA=","
     SINGLE_QUOTE="'"
@@ -60,7 +60,11 @@
     SCM_BLOCK_COMMENT="regexp:#!\{(.|\n)*!#"
     SCM_LINE_COMMENT="regexp:;.*"
 
-    WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.]+"
+    WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#*/]+"
+
+    // A word inside a non-note input mode (e.g. lyric mode): same shape as WORD, but the
+    // lexer emits this type so note highlighting can tell syllables from notes.
+    LYRICS_WORD="regexp:[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#*/]+"
   ]
 }
 
@@ -131,6 +135,7 @@ private music_item ::= DIGIT
   | SMALLER
   | GREATER
   | WORD
+  | LYRICS_WORD
 
 // Scheme sub-grammar, carried over from the previous design (it already handles the
 // corpus). LilyPond embeds Scheme via #/$ and Scheme re-embeds LilyPond via #{ ... #};

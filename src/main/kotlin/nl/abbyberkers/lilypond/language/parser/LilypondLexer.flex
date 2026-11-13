@@ -43,6 +43,27 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
     return !schemeBracketsOpenStack.isEmpty()
         && schemeBracketsOpen == schemeBracketsOpenStack.peek();
   }
+
+  // Non-note input modes (currently lyric mode) reinterpret bare words as syllables, not
+  // notes, so their words are emitted as LYRICS_WORD to keep them out of note highlighting.
+  // Tracked with instance fields like the scheme nesting above; the FlexAdapter only
+  // checkpoints yystate(), so this is not restored on a mid-file incremental relex — the
+  // same known tradeoff the scheme fields already carry.
+  private int braceDepth = 0;
+
+  // Set when a mode-switching command is seen; consumed by the next '{', which opens the
+  // mode body. Lyric-mode commands are always brace-delimited, so the flag can't strand.
+  private boolean pendingModeSuppress = false;
+
+  // braceDepth captured when each non-note-mode `{ ... }` opened; the region ends once
+  // braceDepth falls back to that value.
+  private final Deque<Integer> suppressBraceStack = new ArrayDeque<>();
+
+  private static boolean isModeSwitch(CharSequence command) {
+    return "\\lyricmode".contentEquals(command)
+        || "\\addlyrics".contentEquals(command)
+        || "\\lyricsto".contentEquals(command);
+  }
 %}
 
 %public
@@ -55,6 +76,11 @@ import static nl.abbyberkers.lilypond.language.psi.LilypondTypes.*;
 WS=\s+
 DIGIT=[0-9]
 
+// A run of digits not attached to a note letter, e.g. the duration in `c,16` or `<c e>16`
+// (the octave mark and the `>` end the preceding WORD). Must be declared before {WORD},
+// which matches the same text: on equal match length JFlex prefers the earlier rule.
+NUMBER={DIGIT}+
+
 // A LilyPond command/identifier reference: a backslash followed by letters. Command
 // names contain no digits, so a lone backslash (\\, \!, ...) falls through to BACKSLASH.
 COMMAND_TOKEN=\\[a-zA-Z]+
@@ -62,9 +88,12 @@ COMMAND_TOKEN=\\[a-zA-Z]+
 // A whole string literal, including \" and \\ escapes; may span newlines.
 STRING_LITERAL=\"([^\"\\]|\\[^])*\"
 
-// A bare run of "word" characters (note names, durations, etc.). Excludes every char
-// that carries its own token. Unchanged from the original lexer to preserve tokenization.
-WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#]+
+// A bare run of "word" characters (note names, durations, etc.). Excludes `*` and `/` so a
+// duration multiplier splits into its own tokens (`R1*15` -> WORD STAR DIGIT, `c4*2/3` ->
+// WORD STAR DIGIT SLASH DIGIT); without that the whole run is one WORD and none of it can be
+// recognised as a note. Other chars that carry their own token (`-`, `^`, `:`, ...) are still
+// word chars here, so articulations stay fused into the note word.
+WORD=[^\s\\\{\}%\[\]$\(\)|!\"'=&<>,.#*/]+
 
 // `~` is JFlex's "up to and including" operator: match `%{` then everything up to the
 // FIRST `%}`. A plain `[^]*%}` would be maximal-munch (greedy) and swallow intervening code
@@ -82,7 +111,7 @@ SCM_LINE_COMMENT=;.*
 
 <YYINITIAL> {
   {STRING_LITERAL}       { return STRING_LITERAL; }
-  {COMMAND_TOKEN}        { return COMMAND_TOKEN; }
+  {COMMAND_TOKEN}        { if (isModeSwitch(yytext())) pendingModeSuppress = true; return COMMAND_TOKEN; }
 
   "<<"                   { return MULTI_VOICE_START; }
   ">>"                   { return MULTI_VOICE_END; }
@@ -113,8 +142,16 @@ SCM_LINE_COMMENT=;.*
   "'"                    { return SINGLE_QUOTE; }
   "~"                    { return TILDE; }
   "&"                    { return AMPERSAND; }
-  "{"                    { return LEFT_BRACE; }
-  "}"                    { return RIGHT_BRACE; }
+  "{"                    {
+          braceDepth++;
+          if (pendingModeSuppress) { suppressBraceStack.push(braceDepth); pendingModeSuppress = false; }
+          return LEFT_BRACE;
+      }
+  "}"                    {
+          if (!suppressBraceStack.isEmpty() && suppressBraceStack.peek() == braceDepth) suppressBraceStack.pop();
+          braceDepth--;
+          return RIGHT_BRACE;
+      }
   "["                    { return LEFT_BRACKET; }
   "]"                    { return RIGHT_BRACKET; }
   "?"                    { return QUESTION_MARK; }
@@ -122,11 +159,11 @@ SCM_LINE_COMMENT=;.*
   "("                    { return LEFT_PAREN; }
   ")"                    { return RIGHT_PAREN; }
 
-  {DIGIT}                { return DIGIT; }
+  {NUMBER}               { return DIGIT; }
   {WS}                   { return WHITE_SPACE; }
   {BLOCK_COMMENT}        { return BLOCK_COMMENT; }
   {LINE_COMMENT}         { return LINE_COMMENT; }
-  {WORD}                 { return WORD; }
+  {WORD}                 { return suppressBraceStack.isEmpty() ? WORD : LYRICS_WORD; }
 }
 
 <SCHEME> {
